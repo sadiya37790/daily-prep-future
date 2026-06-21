@@ -267,13 +267,36 @@
               <button id="start-practice-quiz-btn" class="btn-primary" style="font-size: 1rem; font-weight: 700; cursor: pointer;">I've Read the Notes - Start Practice Quiz</button>
             </div>
 
-            <div id="aptitude-score-card" class="aptitude-score-summary hidden" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
-              <div class="score-details">
-                <h4>Quiz Completed!</h4>
-                <p style="margin-top: 4px; font-size: 0.9rem; color: var(--text-secondary);">Your performance has been logged for today's streak.</p>
-                <button id="aptitude-practice-again-btn" class="btn-secondary" style="margin-top: 10px; font-size: 0.85rem; font-weight: 700; padding: 6px 12px; border-radius: var(--border-radius-sm); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; background: rgba(255,255,255,0.05); color: var(--text-main);">🔄 Practice Again (New Qs)</button>
+            <div id="aptitude-score-card" class="aptitude-score-summary hidden" style="display: flex; flex-direction: column; gap: 1.25rem; margin-bottom: 1.5rem; width: 100%;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; width: 100%;">
+                <div class="score-details">
+                  <h4>Quiz Completed!</h4>
+                  <p style="margin-top: 4px; font-size: 0.9rem; color: var(--text-secondary);">Your performance has been logged for today's streak.</p>
+                  <button id="aptitude-practice-again-btn" class="btn-secondary" style="margin-top: 10px; font-size: 0.85rem; font-weight: 700; padding: 6px 12px; border-radius: var(--border-radius-sm); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; background: rgba(255,255,255,0.05); color: var(--text-main);">🔄 Practice Again (New Qs)</button>
+                </div>
+                <div id="aptitude-score-value" class="score-badge">0 / 10</div>
               </div>
-              <div id="aptitude-score-value" class="score-badge">0 / 10</div>
+              
+              <div class="aptitude-stats-grid">
+                <div class="aptitude-stat-card">
+                  <span class="label">Total Time</span>
+                  <span id="stat-time-val" class="value">00:00</span>
+                </div>
+                <div class="aptitude-stat-card">
+                  <span class="label">Avg. Speed</span>
+                  <span id="stat-speed-val" class="value">0.0s/q</span>
+                </div>
+                <div class="aptitude-stat-card">
+                  <span class="label">Performance Rating</span>
+                  <span id="stat-badge-val" class="value aptitude-badge-val">Balanced Analyst</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Stopwatch Widget -->
+            <div id="aptitude-timer-widget" class="aptitude-timer-box hidden" style="margin-bottom: 1.25rem; align-self: flex-start; display: inline-flex;">
+              <span class="stopwatch-icon">⏱️</span>
+              <span id="aptitude-timer-display">00:00</span>
             </div>
 
             <div id="aptitude-questions-list" class="dsa-list">
@@ -427,6 +450,42 @@
     </footer>
 
   </main>
+
+  <!-- Aptitude Companion Drawer -->
+  <div id="drawer-companion" class="aptitude-companion-drawer">
+    <div class="drawer-header">
+      <h3><span>⚡</span> Aptitude Companion</h3>
+      <button id="drawer-close" class="drawer-close-btn">&times;</button>
+    </div>
+    <div class="drawer-tabs">
+      <button id="drawer-tab-btn-formulas" class="drawer-tab-btn active">
+        <span>📖</span> Formulas
+      </button>
+      <button id="drawer-tab-btn-bookmarks" class="drawer-tab-btn">
+        <span>⭐</span> Bookmarks (<span id="drawer-bookmarks-count">0</span>)
+      </button>
+    </div>
+    <div class="drawer-content">
+      <div id="drawer-panel-formulas" class="drawer-tab-panel active">
+        <!-- Topic notes and formulas will render here -->
+        <div id="drawer-formulas-loading" style="color:var(--text-secondary); text-align:center; padding-top:2rem; font-size:0.9rem;">
+          Select a topic to view helper formulas.
+        </div>
+        <div id="drawer-formulas-content"></div>
+      </div>
+      <div id="drawer-panel-bookmarks" class="drawer-tab-panel">
+        <div id="drawer-bookmarks-empty" style="color:var(--text-secondary); text-align:center; padding-top:2rem; font-size:0.9rem;">
+          No bookmarked questions yet. Click the star icon ⭐ on quiz cards to save them.
+        </div>
+        <div id="drawer-bookmarks-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating trigger button -->
+  <button id="btn-companion-trigger" class="drawer-trigger hidden">
+    ⚡ Companion <span id="companion-trigger-badge" class="badge hidden">0</span>
+  </button>
 
   <!-- Script entries in order of dependency -->
   <script src="modules/dsa.js?v=3.0.0"></script>

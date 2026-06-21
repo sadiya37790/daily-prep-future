@@ -64,7 +64,8 @@ const createDefaultProgress = () => ({
   aptitudeQuizzes: {}, // format: { 'number-systems': { questions: [], answers: {}, completed: false } }
   writingContent: "",
   writingSubmitted: false,
-  theorySolved: false
+  theorySolved: false,
+  bookmarkedAptitude: [] // format: [{ topic: 'number-systems', topicTitle: 'Number Systems', question: qObj }]
 });
 
 // --- DOM ELEMENTS ---
@@ -186,6 +187,7 @@ function loadUserDashboard() {
       userProgress.dsaSolved = { 'arrays': userProgress.dsaSolved };
     }
     userProgress.aptitudeQuizzes = userProgress.aptitudeQuizzes || {};
+    userProgress.bookmarkedAptitude = userProgress.bookmarkedAptitude || [];
   } else {
     userProgress = createDefaultProgress();
   }
@@ -613,6 +615,7 @@ function setupDashboardEventListeners() {
   Object.keys(tabs).forEach(key => {
     tabs[key].addEventListener('click', () => switchTab(key));
   });
+  setupCompanionDrawerEvents();
 }
 
 function switchTab(tabKey) {
@@ -626,6 +629,20 @@ function switchTab(tabKey) {
       panels[key].classList.add('hidden');
     }
   });
+
+  // Handle Aptitude Companion Trigger Visibility
+  const companionTrigger = document.getElementById('btn-companion-trigger');
+  if (companionTrigger) {
+    if (tabKey === 'aptitude') {
+      companionTrigger.classList.remove('hidden');
+      updateCompanionDrawerUI();
+    } else {
+      companionTrigger.classList.add('hidden');
+      // Auto close drawer if open
+      const drawer = document.getElementById('drawer-companion');
+      if (drawer) drawer.classList.remove('open');
+    }
+  }
 
   // Load appropriate panel code
   if (tabKey === 'dsa') renderDSAPanel();
@@ -1091,6 +1108,9 @@ function renderDSAPanel() {
 let activeAptitudeTopic = "";
 let currentQuizAnswers = {};
 let activeAptitudeTab = 'notes'; // 'notes' or 'quiz'
+let aptitudeTimerInterval = null;
+let aptitudeTimeElapsed = 0;
+let activeCompanionTab = 'formulas';
 
 function renderAptitudePanel() {
   const select = document.getElementById('aptitude-topic-select');
@@ -1104,6 +1124,7 @@ function renderAptitudePanel() {
     badge.textContent = select.options[select.selectedIndex].text;
     currentQuizAnswers = {};
     activeAptitudeTab = 'notes';
+    stopAptitudeTimer(true);
     loadAptitudeQuestions();
   };
 
@@ -1214,6 +1235,17 @@ function loadAptitudeQuestions() {
   // Handle Tab Switch Actions
   const switchTabUI = (targetTab) => {
     activeAptitudeTab = targetTab;
+    
+    // Toggle active timer display based on subtab selection
+    const timerWidget = document.getElementById('aptitude-timer-widget');
+    if (targetTab === 'quiz' && !isCompleted && !quizState.isPreview) {
+      if (timerWidget) timerWidget.classList.remove('hidden');
+      startAptitudeTimer();
+    } else {
+      if (timerWidget) timerWidget.classList.add('hidden');
+      stopAptitudeTimer(false);
+    }
+
     if (targetTab === 'notes') {
       btnNotes.classList.add('active');
       btnNotes.style.color = "var(--text-main)";
@@ -1246,6 +1278,25 @@ function loadAptitudeQuestions() {
         scoreCard.classList.remove('hidden');
         document.getElementById('aptitude-score-value').textContent = `${quizState.score} / 10`;
         quizFooter.classList.add('hidden');
+
+        // Render completed scorecard stats
+        const timeElapsed = quizState.timeTaken || 0;
+        const mins = Math.floor(timeElapsed / 60);
+        const secs = timeElapsed % 60;
+        document.getElementById('stat-time-val').textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        
+        const avgSpeed = (timeElapsed / 10).toFixed(1);
+        document.getElementById('stat-speed-val').textContent = `${avgSpeed}s/q`;
+        
+        let rating = "Thorough Thinker";
+        if (quizState.score >= 8) {
+          if (avgSpeed < 20) rating = "Speed Demon ⚡";
+          else rating = "Balanced Analyst 🧠";
+        } else if (quizState.score >= 6) {
+          if (avgSpeed < 30) rating = "Quick Thinker ⚡";
+          else rating = "Balanced Analyst 🧠";
+        }
+        document.getElementById('stat-badge-val').textContent = rating;
       } else {
         scoreCard.classList.add('hidden');
         quizFooter.classList.remove('hidden');
@@ -1291,6 +1342,7 @@ function loadAptitudeQuestions() {
     const card = document.createElement('div');
     card.classList.add('quiz-question-card');
     card.id = `aptitude-q-card-${idx}`;
+    card.style.position = 'relative';
 
     const solutionId = `aptitude-solution-${idx}`;
     const showSolutionBtnId = `show-sol-btn-${idx}`;
@@ -1314,7 +1366,19 @@ function loadAptitudeQuestions() {
       `;
     });
 
+    const isBookmarked = userProgress.bookmarkedAptitude.some(b => b.question.question === q.question);
+    const starBtnHtml = `
+      <button class="bookmark-star-btn ${isBookmarked ? 'active' : ''}" 
+              id="star-btn-${idx}" 
+              data-qidx="${idx}" 
+              title="Bookmark Question" 
+              style="position: absolute; top: 1.25rem; right: 1.25rem;">
+        ⭐
+      </button>
+    `;
+
     card.innerHTML = `
+      ${starBtnHtml}
       <div class="question-num">Question ${idx + 1} of 10</div>
       <div class="question-text">${q.question}</div>
       <div class="options-grid">
@@ -1331,6 +1395,32 @@ function loadAptitudeQuestions() {
     `;
 
     questionsList.appendChild(card);
+
+    // Star bookmark toggle handler
+    const starBtn = card.querySelector('.bookmark-star-btn');
+    if (starBtn) {
+      starBtn.onclick = (e) => {
+        e.stopPropagation();
+        const indexInBookmarks = userProgress.bookmarkedAptitude.findIndex(b => b.question.question === q.question);
+        
+        if (indexInBookmarks > -1) {
+          userProgress.bookmarkedAptitude.splice(indexInBookmarks, 1);
+          starBtn.classList.remove('active');
+          showToast("Bookmark Removed", `Removed question from ${topicData.title}`, "success");
+        } else {
+          userProgress.bookmarkedAptitude.push({
+            topic: activeAptitudeTopic,
+            topicTitle: topicData.title,
+            question: q
+          });
+          starBtn.classList.add('active');
+          showToast("Question Bookmarked", `Saved to your Aptitude Companion!`, "success");
+        }
+        
+        saveProgressToStorage();
+        updateCompanionDrawerUI();
+      };
+    }
 
     // Helper to dynamically update option styles based on solution visibility
     const updateOptionStyles = (isSolRevealed) => {
@@ -1414,6 +1504,8 @@ function loadAptitudeQuestions() {
 
     quizState.score = score;
     quizState.completed = true;
+    quizState.timeTaken = aptitudeTimeElapsed;
+    stopAptitudeTimer(false);
     userProgress.aptitudeScore = score;
     
     markModuleCompleted('aptitude');
@@ -1434,6 +1526,7 @@ function loadAptitudeQuestions() {
       userProgress.aptitudeAttempts[activeAptitudeTopic] = prevAttempt + 1;
 
       userProgress.aptitudeQuizzes[activeAptitudeTopic] = null;
+      stopAptitudeTimer(true);
       saveProgressToStorage();
       activeAptitudeTab = 'notes';
       showToast("Quiz Shuffled", `Loaded a different set of questions for ${topicData.title}!`, "success");
@@ -1712,4 +1805,229 @@ function renderTheoryPanel() {
       revealSolBtn.textContent = "Reveal Standard Solution";
     }
   };
+}
+
+// ==================== APTITUDE COMPANION & STOPWATCH LOGIC ====================
+
+function startAptitudeTimer() {
+  if (aptitudeTimerInterval) return;
+  aptitudeTimerInterval = setInterval(() => {
+    aptitudeTimeElapsed++;
+    updateAptitudeTimerDisplay();
+  }, 1000);
+}
+
+function stopAptitudeTimer(reset = false) {
+  if (aptitudeTimerInterval) {
+    clearInterval(aptitudeTimerInterval);
+    aptitudeTimerInterval = null;
+  }
+  if (reset) {
+    aptitudeTimeElapsed = 0;
+  }
+  updateAptitudeTimerDisplay();
+}
+
+function updateAptitudeTimerDisplay() {
+  const display = document.getElementById('aptitude-timer-display');
+  if (display) {
+    const mins = Math.floor(aptitudeTimeElapsed / 60);
+    const secs = aptitudeTimeElapsed % 60;
+    display.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+}
+
+// Update the entire companion drawer (badges, formulas, bookmarks list)
+function updateCompanionDrawerUI() {
+  if (!userProgress) return;
+  
+  // Update floating trigger badge count
+  const badgeVal = userProgress.bookmarkedAptitude ? userProgress.bookmarkedAptitude.length : 0;
+  const triggerBadge = document.getElementById('companion-trigger-badge');
+  if (triggerBadge) {
+    triggerBadge.textContent = badgeVal;
+    if (badgeVal > 0) {
+      triggerBadge.classList.remove('hidden');
+    } else {
+      triggerBadge.classList.add('hidden');
+    }
+  }
+
+  // Update tab headers badge count
+  const countSpan = document.getElementById('drawer-bookmarks-count');
+  if (countSpan) {
+    countSpan.textContent = badgeVal;
+  }
+
+  // Update formulas pane
+  const formulasContent = document.getElementById('drawer-formulas-content');
+  const formulasLoading = document.getElementById('drawer-formulas-loading');
+  if (activeAptitudeTopic && aptitudeDatabase[activeAptitudeTopic]) {
+    if (formulasLoading) formulasLoading.classList.add('hidden');
+    
+    const topicData = aptitudeDatabase[activeAptitudeTopic];
+    const formulasRaw = topicData.notes.formulas;
+    let formulasHtml = "";
+    
+    if (formulasRaw.includes("**🔥 Shortcut Solved Example:**")) {
+      const parts = formulasRaw.split("**🔥 Shortcut Solved Example:**");
+      const formulasText = parts[0].trim();
+      const exampleText = parts[1].trim();
+
+      formulasHtml = `
+        <h4 style="color:var(--text-main); font-size:0.9rem; font-weight:700; margin-bottom:0.5rem; margin-top: 0.5rem;">Formulas for ${topicData.title}:</h4>
+        <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 0.8rem; color: #38bdf8; margin-bottom: 1rem; white-space: pre-wrap; line-height: 1.4; border: 1px solid rgba(255,255,255,0.04);">${formulasText}</pre>
+        <div style="background: rgba(139, 92, 246, 0.03); border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 8px; padding: 1rem;">
+          <h5 style="color: #c084fc; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 4px;">
+            <span>🔥</span> Shortcut Example
+          </h5>
+          <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.4; white-space: pre-wrap;">
+            ${exampleText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}
+          </div>
+        </div>
+      `;
+    } else {
+      formulasHtml = `
+        <h4 style="color:var(--text-main); font-size:0.9rem; font-weight:700; margin-bottom:0.5rem; margin-top: 0.5rem;">Formulas for ${topicData.title}:</h4>
+        <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 0.8rem; color: #38bdf8; margin-bottom: 1rem; white-space: pre-wrap; line-height: 1.4; border: 1px solid rgba(255,255,255,0.04);">${formulasRaw}</pre>
+      `;
+    }
+    
+    // Add tips too
+    formulasHtml += `
+      <h4 style="color:var(--text-main); font-size:0.9rem; font-weight:700; margin-top:1.25rem; margin-bottom:0.5rem;">Shortcut Tips:</h4>
+      <ul style="margin-left: 1.25rem; font-size: 0.82rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 6px; line-height: 1.4;">
+        ${topicData.notes.tips.map(tip => `<li>${tip.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`).join('')}
+      </ul>
+    `;
+    
+    if (formulasContent) formulasContent.innerHTML = formulasHtml;
+  } else {
+    if (formulasLoading) formulasLoading.classList.remove('hidden');
+    if (formulasContent) formulasContent.innerHTML = "";
+  }
+
+  // Update bookmarked list pane
+  const emptyMsg = document.getElementById('drawer-bookmarks-empty');
+  const listContainer = document.getElementById('drawer-bookmarks-list');
+  const bookmarkedList = userProgress.bookmarkedAptitude || [];
+  
+  if (bookmarkedList.length === 0) {
+    if (emptyMsg) emptyMsg.classList.remove('hidden');
+    if (listContainer) listContainer.innerHTML = "";
+  } else {
+    if (emptyMsg) emptyMsg.classList.add('hidden');
+    if (listContainer) {
+      listContainer.innerHTML = bookmarkedList.map((bookmark, idx) => {
+        const q = bookmark.question;
+        
+        return `
+          <div class="bookmarked-q-card" id="bookmark-card-${idx}">
+            <div class="bookmarked-q-topic">${bookmark.topicTitle}</div>
+            <div class="bookmarked-q-text">${q.question}</div>
+            
+            <div class="bookmarked-q-options">
+              ${q.options.map((opt, optIdx) => `
+                <div class="bookmarked-q-option-line ${optIdx === q.answer ? 'correct-opt' : ''}">
+                  ${String.fromCharCode(65 + optIdx)}. ${opt}
+                </div>
+              `).join('')}
+            </div>
+
+            <div id="bookmark-sol-${idx}" class="solution-box hidden" style="margin: 0.5rem 0; font-size: 0.82rem; background: rgba(6, 182, 212, 0.02);">
+              <h5 style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom: 0.25rem;">Step-by-step Explanation</h5>
+              <p style="font-size:0.8rem; color:var(--text-secondary); line-height:1.4; margin:0;">${q.explanation}</p>
+            </div>
+
+            <div class="bookmarked-q-actions">
+              <button class="remove-bookmark-btn" onclick="removeAptitudeBookmark(${idx})">
+                🗑️ Remove
+              </button>
+              <button class="toggle-bookmark-sol-btn" id="btn-toggle-bookmark-sol-${idx}" onclick="toggleBookmarkSolution(${idx})">
+                📖 View Solution
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
+
+// Global functions so onclick HTML handlers can access them
+window.removeAptitudeBookmark = function(idx) {
+  if (!userProgress.bookmarkedAptitude) return;
+  const removed = userProgress.bookmarkedAptitude.splice(idx, 1)[0];
+  saveProgressToStorage();
+  updateCompanionDrawerUI();
+  showToast("Bookmark Removed", `Removed question from ${removed.topicTitle}`, "success");
+  
+  // Update star buttons on current quiz screen if they match the removed bookmark
+  document.querySelectorAll('.bookmark-star-btn').forEach(btn => {
+    const qIdx = parseInt(btn.getAttribute('data-qidx'));
+    const qCard = btn.closest('.quiz-question-card');
+    if (qCard) {
+      const qText = qCard.querySelector('.question-text').textContent;
+      if (qText === removed.question.question) {
+        btn.classList.remove('active');
+      }
+    }
+  });
+};
+
+window.toggleBookmarkSolution = function(idx) {
+  const solBox = document.getElementById(`bookmark-sol-${idx}`);
+  const btn = document.getElementById(`btn-toggle-bookmark-sol-${idx}`);
+  if (solBox && btn) {
+    if (solBox.classList.contains('hidden')) {
+      solBox.classList.remove('hidden');
+      btn.textContent = "🙈 Hide Solution";
+    } else {
+      solBox.classList.add('hidden');
+      btn.textContent = "📖 View Solution";
+    }
+  }
+};
+
+// Initialize Companion Drawer DOM Event Listeners
+function setupCompanionDrawerEvents() {
+  const trigger = document.getElementById('btn-companion-trigger');
+  const drawer = document.getElementById('drawer-companion');
+  const closeBtn = document.getElementById('drawer-close');
+  const tabFormulas = document.getElementById('drawer-tab-btn-formulas');
+  const tabBookmarks = document.getElementById('drawer-tab-btn-bookmarks');
+  const panelFormulas = document.getElementById('drawer-panel-formulas');
+  const panelBookmarks = document.getElementById('drawer-panel-bookmarks');
+
+  if (!trigger || !drawer || !closeBtn) return;
+
+  trigger.onclick = () => {
+    drawer.classList.toggle('open');
+    if (drawer.classList.contains('open')) {
+      updateCompanionDrawerUI();
+    }
+  };
+
+  closeBtn.onclick = () => {
+    drawer.classList.remove('open');
+  };
+
+  const switchDrawerTab = (tab) => {
+    activeCompanionTab = tab;
+    if (tab === 'formulas') {
+      tabFormulas.classList.add('active');
+      tabBookmarks.classList.remove('active');
+      panelFormulas.classList.add('active');
+      panelBookmarks.classList.remove('active');
+    } else {
+      tabBookmarks.classList.add('active');
+      tabFormulas.classList.remove('active');
+      panelBookmarks.classList.add('active');
+      panelFormulas.classList.remove('active');
+      updateCompanionDrawerUI(); // refresh bookmarks view
+    }
+  };
+
+  tabFormulas.onclick = () => switchDrawerTab('formulas');
+  tabBookmarks.onclick = () => switchDrawerTab('bookmarks');
 }

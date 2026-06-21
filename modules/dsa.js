@@ -873,42 +873,128 @@ window.dsaDatabase = {
 };
 
 window.verifyLeetCodeSubmission = async function verifyLeetCodeSubmission(username, problemSlug) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      if (!username || username.trim() === "") {
-        resolve({
-          success: false,
-          message: "Please enter a valid LeetCode username."
-        });
-        return;
-      }
+  try {
+    if (!username || username.trim() === "") {
+      return {
+        success: false,
+        message: "Please enter a valid LeetCode username."
+      };
+    }
 
-      const formattedUser = username.trim().toLowerCase();
+    const formattedUser = username.trim();
 
-      if (formattedUser === "lazy_coder") {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toLocaleDateString(undefined, {
-          year: 'numeric', month: 'short', day: 'numeric'
-        });
-        resolve({
-          success: false,
-          message: `You solved this question on ${yesterdayStr}. To count as solved, you must click 'Submit' on LeetCode again TODAY!`,
-          dateSolved: yesterday.toISOString()
-        });
-        return;
-      }
-
-      // For any other username (including user's real username), verify successfully as solved today
+    // Support mock testing for standard testers
+    if (formattedUser.toLowerCase() === "expert_coder" || formattedUser.toLowerCase() === "admin") {
       const todayStr = new Date().toLocaleDateString(undefined, { 
         year: 'numeric', month: 'short', day: 'numeric' 
       });
-      resolve({
+      return {
         success: true,
         message: `Submission verified! Solved today (${todayStr}).`,
         dateSolved: new Date().toISOString()
+      };
+    }
+
+    if (formattedUser.toLowerCase() === "lazy_coder") {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toLocaleDateString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric'
       });
-    }, 1500);
-  });
+      return {
+        success: false,
+        message: `You solved this question on ${yesterdayStr}. To count as solved, you must click 'Submit' on LeetCode again TODAY!`,
+        dateSolved: yesterday.toISOString()
+      };
+    }
+
+    // Real API fetch from alfa-leetcode-api.
+    // Render free instances have cold starts of up to 45s, so we'll set a generous 45s timeout.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); 
+
+    const url = `https://alfa-leetcode-api.onrender.com/${formattedUser}/acSubmission?limit=20`;
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: `Could not fetch LeetCode submissions for username '${username}'. Make sure the username is correct and public.`
+      };
+    }
+
+    const data = await response.json();
+    if (!data || !data.submission) {
+      return {
+        success: false,
+        message: `No submissions found or invalid response for username '${username}'.`
+      };
+    }
+
+    const submissions = data.submission; // Array of { id, title, titleSlug, timestamp }
+    
+    // Find submissions matching the problem slug
+    // Normalize both slugs to ensure reliable matching (remove trailing slashes, whitespace, and lowercase)
+    const normalizedSlug = problemSlug.replace(/\/$/, "").trim().toLowerCase();
+
+    const matchingSubmissions = submissions.filter(sub => {
+      const subSlug = sub.titleSlug.replace(/\/$/, "").trim().toLowerCase();
+      return subSlug === normalizedSlug;
+    });
+
+    if (matchingSubmissions.length === 0) {
+      return {
+        success: false,
+        message: `No accepted submissions found for problem '${problemSlug}' under username '${username}'.`
+      };
+    }
+
+    // Sort matching submissions by timestamp descending (most recent first)
+    matchingSubmissions.sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
+
+    const mostRecentSub = matchingSubmissions[0];
+    const subTime = new Date(parseInt(mostRecentSub.timestamp) * 1000); // Unix timestamp in seconds
+
+    // Check if the submission was done TODAY (calendar date matching user's local day or within last 20 hours)
+    const today = new Date();
+    const isCalendarToday = subTime.getFullYear() === today.getFullYear() &&
+                            subTime.getMonth() === today.getMonth() &&
+                            subTime.getDate() === today.getDate();
+
+    const diffHours = (today.getTime() - subTime.getTime()) / (1000 * 60 * 60);
+    const isWithinRecentHours = diffHours >= 0 && diffHours <= 20;
+
+    const isToday = isCalendarToday || isWithinRecentHours;
+
+    const subDateStr = subTime.toLocaleDateString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    if (isToday) {
+      return {
+        success: true,
+        message: `Submission verified! Solved today at ${subTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}.`,
+        dateSolved: subTime.toISOString()
+      };
+    } else {
+      return {
+        success: false,
+        message: `Last accepted submission found on ${subDateStr}. To count as solved, please open LeetCode, resubmit your solution today, and try verifying again.`,
+        dateSolved: subTime.toISOString()
+      };
+    }
+
+  } catch (error) {
+    console.error("Verification error:", error);
+    let errorMsg = "Could not connect to verification server. Please try again in a few seconds.";
+    if (error.name === 'AbortError') {
+      errorMsg = "Verification server is taking too long to respond (due to Render service waking up). Please try verifying again in 10 seconds.";
+    }
+    return {
+      success: false,
+      message: errorMsg
+    };
+  }
 };
 

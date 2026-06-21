@@ -992,8 +992,15 @@ function renderDSAPanel() {
       const errorBox = document.getElementById(`dsa-error-${topic}-${idx}`);
       errorBox.classList.add('hidden');
 
+      // Auto-save whatever is currently in the LeetCode username text box, in case they forgot to click "Save Username"
+      const currentInputUsername = document.getElementById('leetcode-username').value.trim();
+      if (currentInputUsername) {
+        userProgress.leetcodeUsername = currentInputUsername;
+        saveProgressToStorage();
+      }
+
       if (!userProgress.leetcodeUsername) {
-        errorBox.textContent = "Error: Please set and save your LeetCode username above before verifying.";
+        errorBox.textContent = "Error: Please enter a LeetCode username above before verifying.";
         errorBox.classList.remove('hidden');
         return;
       }

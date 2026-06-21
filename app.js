@@ -669,7 +669,7 @@ function updateOverallProgress() {
       banner.innerHTML = `
         <span style="font-size: 1.2rem;">🏆</span>
         <div>
-          <span style="font-weight: 700; color: #fff;">Congratulations!</span> All daily tasks completed. <strong>"Consistency is the key to success!"</strong> Keep it up tomorrow!
+          <span style="font-weight: 700; color: #fff;">Congratulations!</span> All daily tasks completed. <strong>"Consistency is the key to success!"</strong> See tomorrow's coding questions preview below.
         </div>
       `;
     }
@@ -707,6 +707,9 @@ function markModuleCompleted(moduleKey) {
   saveProgressToStorage();
   updateOverallProgress();
   renderHeatmap();
+  
+  // Re-render DSA panel to show tomorrow's preview if all completed
+  renderDSAPanel();
 }
 
 // --- HEATMAP GENERATION ---
@@ -816,16 +819,46 @@ function renderDSAPanel() {
     }
   });
 
-  // 2. Select 3 questions for today based on calendar day
-  const dayOfYear = getDayOfYear();
+  // 2. Select 3 questions. If all 4 modules are completed, show a preview of tomorrow's questions!
+  const completedModulesCount = Object.values(userProgress.todayCompletion).filter(v => v).length;
+  const allCompletedToday = completedModulesCount === 4;
+  
+  let daySeed = getDayOfYear();
+  let isPreviewOnly = false;
+  if (allCompletedToday) {
+    daySeed = daySeed + 1;
+    isPreviewOnly = true;
+  }
   
   const todayQuestions = [];
   const totalQs = allQuestions.length;
   if (totalQs > 0) {
     for (let i = 0; i < 3; i++) {
-      const qIdx = (dayOfYear * 3 + i) % totalQs;
+      const qIdx = (daySeed * 3 + i) % totalQs;
       todayQuestions.push(allQuestions[qIdx]);
     }
+  }
+
+  // Render a banner inside the DSA container if in tomorrow preview mode
+  if (isPreviewOnly) {
+    const previewBanner = document.createElement('div');
+    previewBanner.className = "alert alert-success";
+    previewBanner.style.marginBottom = "1.5rem";
+    previewBanner.style.display = "flex";
+    previewBanner.style.alignItems = "center";
+    previewBanner.style.justifyContent = "space-between";
+    previewBanner.style.flexWrap = "wrap";
+    previewBanner.style.gap = "8px";
+    previewBanner.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.2rem;">🎉</span>
+        <div>
+          <strong style="color: #fff;">Today's tasks finished!</strong> Showing a locked preview of tomorrow's DSA questions.
+        </div>
+      </div>
+      <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); color: var(--text-secondary); padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid rgba(255,255,255,0.03);">Tomorrow's Tasks</span>
+    `;
+    dsaList.appendChild(previewBanner);
   }
 
   // 3. Render the 3 questions
@@ -872,7 +905,11 @@ function renderDSAPanel() {
           <button class="dsa-hints-toggle-btn" data-panel-id="${hintsPanelId}" style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.15); color: #c084fc; padding: 10px 14px; border-radius: var(--border-radius-sm); font-weight: 700; font-size: 0.85rem; height: 38px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
             <span>💡</span> Show Hints & Tracer
           </button>
-          ${isSolved ? `
+          ${isPreviewOnly ? `
+            <span class="lock-preview-badge" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); color: var(--text-muted); padding: 0 16px; border-radius: var(--border-radius-sm); font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; height: 38px; cursor: not-allowed; user-select: none;">
+              <span>🔒</span> Locked Preview
+            </span>
+          ` : isSolved ? `
             <span class="verified-badge">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               ${isLeetCode ? 'Verified' : 'Completed'}

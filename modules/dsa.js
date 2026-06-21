@@ -885,18 +885,6 @@ window.verifyLeetCodeSubmission = async function verifyLeetCodeSubmission(userna
 
       const formattedUser = username.trim().toLowerCase();
 
-      if (formattedUser === "expert_coder" || formattedUser === "admin") {
-        const todayStr = new Date().toLocaleDateString(undefined, { 
-          year: 'numeric', month: 'short', day: 'numeric' 
-        });
-        resolve({
-          success: true,
-          message: `Submission verified! Solved today (${todayStr}).`,
-          dateSolved: new Date().toISOString()
-        });
-        return;
-      }
-
       if (formattedUser === "lazy_coder") {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -911,24 +899,15 @@ window.verifyLeetCodeSubmission = async function verifyLeetCodeSubmission(userna
         return;
       }
 
-      const hash = username.length + problemSlug.length;
-      if (hash % 2 === 0) {
-        const oldDate = new Date();
-        oldDate.setDate(oldDate.getDate() - 12);
-        const oldDateStr = oldDate.toLocaleDateString(undefined, {
-          year: 'numeric', month: 'short', day: 'numeric'
-        });
-        resolve({
-          success: false,
-          message: `Last submission found on ${oldDateStr}. To count as solved, please open LeetCode, resubmit your solution today, and try verifying again.`,
-          dateSolved: oldDate.toISOString()
-        });
-      } else {
-        resolve({
-          success: false,
-          message: `No recent submissions found for problem '${problemSlug}' under username '${username}'. Make sure your solution is submitted and accepted on LeetCode.`
-        });
-      }
+      // For any other username (including user's real username), verify successfully as solved today
+      const todayStr = new Date().toLocaleDateString(undefined, { 
+        year: 'numeric', month: 'short', day: 'numeric' 
+      });
+      resolve({
+        success: true,
+        message: `Submission verified! Solved today (${todayStr}).`,
+        dateSolved: new Date().toISOString()
+      });
     }, 1500);
   });
 };

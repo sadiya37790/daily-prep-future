@@ -130,6 +130,45 @@
       <!-- Left Column (Stats & History Sidebar) -->
       <section class="sidebar-panel">
         
+        <!-- Sidebar Navigation Card (Screenshot Style) -->
+        <div class="glass-card sidebar-nav-card" style="padding: 1.25rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+          <div>
+            <div class="nav-category-title" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 0.6rem; padding-left: 4px;">My Learning</div>
+            <nav class="module-tabs" style="display: flex; flex-direction: column; gap: 6px;">
+              <button id="tab-module-dsa" class="module-tab-btn active" data-module="dsa">
+                <svg viewBox="0 0 24 24" class="nav-icon" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 18 22 12 16 6"></polyline>
+                  <polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+                <span>DSA Tracker</span>
+              </button>
+              <button id="tab-module-aptitude" class="module-tab-btn" data-module="aptitude">
+                <svg viewBox="0 0 24 24" class="nav-icon" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+                <span>Quantitative Aptitude</span>
+              </button>
+              <button id="tab-module-writing" class="module-tab-btn" data-module="writing">
+                <svg viewBox="0 0 24 24" class="nav-icon" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                <span>Paragraph Writing</span>
+              </button>
+              <button id="tab-module-theory" class="module-tab-btn" data-module="theory">
+                <svg viewBox="0 0 24 24" class="nav-icon" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                  <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"></path>
+                </svg>
+                <span>CS Core & SQL</span>
+              </button>
+            </nav>
+          </div>
+        </div>
+        
         <!-- SDE Rank & Level Card -->
         <div class="glass-card level-card" style="margin-bottom: 1.5rem; text-align: center; padding: 1.25rem;">
           <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--accent-secondary); letter-spacing: 1px; margin-bottom: 0.25rem;">Developer Rank</div>
@@ -233,22 +272,6 @@
         
         <!-- Daily Status Alert Banner -->
         <div id="daily-status-banner" class="status-banner"></div>
-
-        <!-- Module Navigation Tabs -->
-        <nav class="module-tabs">
-          <button id="tab-module-dsa" class="module-tab-btn active" data-module="dsa">
-            <span>💻</span> DSA
-          </button>
-          <button id="tab-module-aptitude" class="module-tab-btn" data-module="aptitude">
-            <span>📊</span> Quantitative Aptitude
-          </button>
-          <button id="tab-module-writing" class="module-tab-btn" data-module="writing">
-            <span>✍️</span> Paragraph Writing
-          </button>
-          <button id="tab-module-theory" class="module-tab-btn" data-module="theory">
-            <span>📚</span> CS Core & SQL
-          </button>
-        </nav>
 
         <!-- MODULE CONTENT 1: DSA TRACKER -->
         <div id="panel-dsa" class="glass-card module-panel">

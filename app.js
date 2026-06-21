@@ -1106,6 +1106,7 @@ let activeAptitudeTab = 'notes'; // 'notes' or 'quiz'
 let aptitudeTimerInterval = null;
 let aptitudeTimeElapsed = 0;
 let activeCompanionTab = 'formulas';
+let currentAptitudeQuestionIndex = 0;
 
 function renderAptitudePanel() {
   const select = document.getElementById('aptitude-topic-select');
@@ -1120,6 +1121,7 @@ function renderAptitudePanel() {
     currentQuizAnswers = {};
     activeAptitudeTab = 'notes';
     stopAptitudeTimer(true);
+    currentAptitudeQuestionIndex = 0;
     loadAptitudeQuestions();
   };
 
@@ -1319,6 +1321,11 @@ function loadAptitudeQuestions() {
     card.id = `aptitude-q-card-${idx}`;
     card.style.position = 'relative';
 
+    // Hide all except current question in active quiz mode
+    if (!isCompleted && idx !== currentAptitudeQuestionIndex) {
+      card.classList.add('hidden');
+    }
+
     const solutionId = `aptitude-solution-${idx}`;
     const showSolutionBtnId = `show-sol-btn-${idx}`;
 
@@ -1456,13 +1463,16 @@ function loadAptitudeQuestions() {
           const solBox = document.getElementById(solutionId);
           const isSolRevealed = !solBox.classList.contains('hidden');
           updateOptionStyles(isSolRevealed);
+          
+          // Re-render footer to reflect that dot status has updated to "answered"
+          loadAptitudeQuestions();
         };
       });
     }
   });
 
-  // Submit Handler
-  submitBtn.onclick = () => {
+  // Submit Submission execution helper
+  const executeQuizSubmission = () => {
     const answeredCount = Object.keys(currentQuizAnswers).length;
 
     if (answeredCount < 10) {
@@ -1488,8 +1498,94 @@ function loadAptitudeQuestions() {
     
     showToast("Quiz Submitted", `You scored ${score}/10 on ${topicData.title}!`, "success");
     gainXp(150, `Completed ${topicData.title} Quiz (Score: ${score}/10)`);
+    currentAptitudeQuestionIndex = 0; // Reset index to 0
     loadAptitudeQuestions();
   };
+
+  // Dynamic pagination navigation bar inside footer
+  if (!isCompleted) {
+    quizFooter.classList.remove('hidden');
+    
+    const isSubmitVisible = currentAptitudeQuestionIndex === 9 && !quizState.isPreview;
+    const isNextVisible = currentAptitudeQuestionIndex < 9;
+    
+    quizFooter.innerHTML = `
+      <div class="aptitude-nav-actions" style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
+        <button id="aptitude-prev-q-btn" class="btn-secondary" style="flex: 1; max-width: 150px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 0;" ${currentAptitudeQuestionIndex === 0 ? 'disabled style="opacity: 0.4; cursor: not-allowed;"' : ''}>
+          <span>←</span> Prev
+        </button>
+        
+        <!-- Step Indicators (dots) -->
+        <div class="aptitude-progress-dots" style="display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap;">
+          ${quizState.questions.map((_, dotIdx) => {
+            const hasAnswered = currentQuizAnswers[dotIdx] !== undefined;
+            const isActive = dotIdx === currentAptitudeQuestionIndex;
+            let dotColor = 'rgba(255, 255, 255, 0.15)';
+            if (isActive) dotColor = 'var(--accent-primary)';
+            else if (hasAnswered) dotColor = 'var(--accent-secondary)';
+            
+            let borderStyle = isActive ? '2px solid #fff' : '1px solid rgba(255,255,255,0.08)';
+            
+            return `
+              <span class="aptitude-dot ${isActive ? 'active' : ''} ${hasAnswered ? 'answered' : ''}" 
+                    data-idx="${dotIdx}"
+                    style="width: 10px; height: 10px; border-radius: 50%; background: ${dotColor}; border: ${borderStyle}; cursor: pointer; transition: var(--transition-smooth);"
+                    title="Question ${dotIdx + 1}">
+              </span>
+            `;
+          }).join('')}
+        </div>
+
+        ${isSubmitVisible ? `
+          <button id="submit-aptitude-quiz" class="submit-quiz-btn" style="flex: 1; max-width: 180px; height: 44px; margin: 0; background: var(--accent-gradient); border: none; color: #fff; font-weight: 700; border-radius: var(--border-radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            Submit Quiz 🏆
+          </button>
+        ` : isNextVisible ? `
+          <button id="aptitude-next-q-btn" class="btn-primary" style="flex: 1; max-width: 150px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            Next <span>→</span>
+          </button>
+        ` : `
+          <div style="flex: 1; max-width: 150px;"></div>
+        `}
+      </div>
+    `;
+
+    // Attach listeners for prev/next buttons
+    const prevBtn = document.getElementById('aptitude-prev-q-btn');
+    if (prevBtn && currentAptitudeQuestionIndex > 0) {
+      prevBtn.onclick = () => {
+        currentAptitudeQuestionIndex--;
+        loadAptitudeQuestions();
+      };
+    }
+    
+    const nextBtn = document.getElementById('aptitude-next-q-btn');
+    if (nextBtn && currentAptitudeQuestionIndex < 9) {
+      nextBtn.onclick = () => {
+        currentAptitudeQuestionIndex++;
+        loadAptitudeQuestions();
+      };
+    }
+    
+    // Attach listener for submit button
+    const activeSubmitBtn = document.getElementById('submit-aptitude-quiz');
+    if (activeSubmitBtn) {
+      activeSubmitBtn.onclick = () => {
+        executeQuizSubmission();
+      };
+    }
+
+    // Attach listeners for dot clicks
+    quizFooter.querySelectorAll('.aptitude-dot').forEach(dot => {
+      dot.onclick = () => {
+        const dotIdx = parseInt(dot.getAttribute('data-idx'));
+        currentAptitudeQuestionIndex = dotIdx;
+        loadAptitudeQuestions();
+      };
+    });
+  } else {
+    quizFooter.classList.add('hidden');
+  }
 
   // Practice Again / Reset Handler
   const practiceAgainBtn = document.getElementById('aptitude-practice-again-btn');
@@ -1505,6 +1601,7 @@ function loadAptitudeQuestions() {
       stopAptitudeTimer(true);
       saveProgressToStorage();
       activeAptitudeTab = 'notes';
+      currentAptitudeQuestionIndex = 0; // Reset index to 0
       showToast("Quiz Shuffled", `Loaded a different set of questions for ${topicData.title}!`, "success");
       loadAptitudeQuestions();
     };

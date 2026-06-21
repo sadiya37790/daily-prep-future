@@ -1,15 +1,15 @@
 /* Daily Prep for Future CSS - Modern Premium Glassmorphism Design System */
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --bg-primary: #080c14;
-  --bg-glow-1: rgba(99, 102, 241, 0.15); /* Indigo */
-  --bg-glow-2: rgba(14, 165, 233, 0.12); /* Sky blue */
-  --glass-bg: rgba(13, 20, 35, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.06);
-  --glass-border-hover: rgba(255, 255, 255, 0.12);
-  --glass-highlight: rgba(255, 255, 255, 0.02);
+  --bg-primary: #060913;
+  --bg-glow-1: rgba(139, 92, 246, 0.18); /* Indigo/Violet */
+  --bg-glow-2: rgba(6, 182, 212, 0.15); /* Cyan */
+  --glass-bg: rgba(13, 20, 35, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.15);
+  --glass-highlight: rgba(255, 255, 255, 0.03);
   
   --text-main: #f8fafc;
   --text-secondary: #94a3b8;
@@ -26,11 +26,22 @@
   --error-gradient: linear-gradient(135deg, #f43f5e, #e11d48);
   
   --font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
   --border-radius-sm: 8px;
   --border-radius-md: 16px;
   --border-radius-lg: 24px;
-  --shadow-main: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --shadow-main: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+}
+
+pre, code {
+  font-family: var(--font-mono);
 }
 
 * {
@@ -604,49 +615,76 @@ body::after {
 /* SECTION TABS FOR DAILY MODULES */
 .module-tabs {
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 8px;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
 }
 
 .module-tab-btn {
-  background: var(--glass-bg);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--glass-border);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid transparent;
   color: var(--text-secondary);
-  padding: 12px 24px;
-  font-size: 0.95rem;
+  padding: 10px 14px;
+  font-family: var(--font-family);
+  font-size: 0.92rem;
   font-weight: 600;
-  border-radius: var(--border-radius-md);
+  border-radius: 8px;
   cursor: pointer;
   transition: var(--transition-smooth);
   white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
+
+.module-tab-btn .nav-icon {
+  width: 18px;
+  height: 18px;
+  stroke: var(--text-secondary);
+  stroke-width: 2px;
+  fill: none;
+  transition: var(--transition-smooth);
 }
 
 .module-tab-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-main);
+}
+
+.module-tab-btn:hover .nav-icon {
+  stroke: var(--text-main);
 }
 
 .module-tab-btn.active {
-  background: var(--accent-gradient);
-  border-color: transparent;
-  color: var(--text-main);
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25);
+  background: #10b981 !important; /* Vibrant green accent background */
+  border-color: transparent !important;
+  color: #fff !important;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.module-tab-btn.active .nav-icon {
+  stroke: #fff !important;
 }
 
 .module-tab-btn.completed {
-  border-color: rgba(16, 185, 129, 0.3);
+  border-color: transparent;
 }
 
 .module-tab-btn.completed::after {
   content: '✓';
   color: var(--success);
   font-weight: bold;
+  margin-left: auto;
+}
+
+.module-tab-btn.active.completed::after {
+  color: #fff;
 }
 
 /* MAIN CONTENT SECTIONS */
@@ -1913,7 +1951,7 @@ select option {
   border: 1px solid rgba(255,255,255,0.06);
   padding: 8px 16px;
   border-radius: 20px;
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 0.92rem;
   font-weight: 700;
   color: #38bdf8;
@@ -1963,7 +2001,7 @@ select option {
   font-size: 1.1rem;
   color: #fff;
   font-weight: 700;
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 .aptitude-badge-val {

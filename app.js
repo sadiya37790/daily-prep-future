@@ -1689,6 +1689,7 @@ function renderWritingPanel() {
     submitBtn.innerHTML = "Tomorrow's Prompt";
     submitBtn.classList.add('hidden');
     statusMsg.innerHTML = "";
+    document.getElementById('writing-grammar-report').classList.add('hidden');
   } else if (isCompleted) {
     editor.disabled = true;
     submitBtn.classList.add('hidden');
@@ -1696,6 +1697,37 @@ function renderWritingPanel() {
     submitBtn.style.opacity = '1';
     submitBtn.innerHTML = 'Submit Paragraph';
     statusMsg.innerHTML = `<span style="color:var(--success)">✓ Your paragraph was submitted successfully today!</span>`;
+
+    // Process grammar and spelling errors report
+    const grammarReport = document.getElementById('writing-grammar-report');
+    const mistakesContainer = document.getElementById('grammar-mistakes-container');
+    const correctedTextDiv = document.getElementById('grammar-corrected-text');
+    const statusSummary = document.getElementById('grammar-status-summary');
+
+    if (grammarReport && mistakesContainer && correctedTextDiv && statusSummary) {
+      grammarReport.classList.remove('hidden');
+      const result = window.checkGrammarAndCorrect(editor.value);
+      correctedTextDiv.textContent = result.correctedText;
+
+      if (result.mistakes.length === 0) {
+        statusSummary.innerHTML = `🌟 <strong>Perfect Score!</strong> No grammar, spacing, spelling, or capitalization mistakes were detected in your paragraph. Excellent writing skills!`;
+        mistakesContainer.innerHTML = "";
+      } else {
+        statusSummary.innerHTML = `🔍 We found <strong>${result.mistakes.length} writing issue(s)</strong> in your paragraph. Review the detailed corrections below:`;
+        mistakesContainer.innerHTML = result.mistakes.map(m => `
+          <div class="grammar-mistake-card" style="background: rgba(239, 68, 68, 0.02); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.72rem; background: rgba(239, 68, 68, 0.1); color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-weight: 700; text-transform: uppercase; border: 1px solid rgba(239, 68, 68, 0.15);">${m.type}</span>
+            </div>
+            <div style="font-size: 0.9rem; color: var(--text-main); font-weight: 600; margin-top: 4px;">${m.desc}</div>
+            <div style="font-size: 0.85rem; color: #38bdf8; display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+              <span>💡 Suggested Correction:</span>
+              <strong>${m.fix}</strong>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
   } else {
     editor.disabled = false;
     submitBtn.classList.remove('hidden');
@@ -1703,6 +1735,7 @@ function renderWritingPanel() {
     submitBtn.style.opacity = '1';
     submitBtn.innerHTML = 'Submit Paragraph';
     statusMsg.textContent = "";
+    document.getElementById('writing-grammar-report').classList.add('hidden');
   }
 
   // --- ANTI-CHEAT: BLOCK COPY & PASTE ---

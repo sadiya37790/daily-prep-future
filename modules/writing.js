@@ -77,3 +77,148 @@ window.analyzeParagraph = function(text) {
     readingTime
   };
 }
+
+/**
+ * Checks the text for spacing, capitalization, common spelling, and contraction errors,
+ * returning a list of mistakes and the suggested corrected text.
+ * @param {string} text
+ * @returns {{mistakes: Array<{type: string, desc: string, fix: string}>, correctedText: string}}
+ */
+window.checkGrammarAndCorrect = function(text) {
+  if (!text) return { mistakes: [], correctedText: "" };
+
+  let corrected = text;
+  const mistakes = [];
+
+  // 1. Double Spaces Check
+  if (/\s{2,}/.test(corrected)) {
+    mistakes.push({
+      type: "Spacing",
+      desc: "Multiple consecutive spaces found.",
+      fix: "Replace multiple spaces with a single space."
+    });
+    corrected = corrected.replace(/\s{2,}/g, " ");
+  }
+
+  // 2. Space before punctuation (e.g. "hello , world" -> "hello, world")
+  if (/\s+([.,!?;:])/.test(corrected)) {
+    mistakes.push({
+      type: "Punctuation Spacing",
+      desc: "Space detected before punctuation mark (comma, period, etc.).",
+      fix: "Remove space before punctuation."
+    });
+    corrected = corrected.replace(/\s+([.,!?;:])/g, "$1");
+  }
+
+  // 3. Missing space after punctuation (e.g. "hello,world" -> "hello, world")
+  if (/([.,!?;:])([a-zA-Z])/g.test(corrected)) {
+    mistakes.push({
+      type: "Punctuation Spacing",
+      desc: "Missing space after punctuation mark.",
+      fix: "Add a space after punctuation."
+    });
+    corrected = corrected.replace(/([.,!?;:])([a-zA-Z])/g, "$1 $2");
+  }
+
+  // 4. Lowercase "i" pronoun
+  if (/\bi\b/g.test(corrected)) {
+    mistakes.push({
+      type: "Capitalization",
+      desc: "Pronoun 'i' should always be capitalized.",
+      fix: "Capitalize 'i' to 'I'."
+    });
+    corrected = corrected.replace(/\bi\b/g, "I");
+  }
+  if (/\bi'm\b/gi.test(corrected)) {
+    mistakes.push({
+      type: "Capitalization",
+      desc: "Contraction 'i'm' should be capitalized.",
+      fix: "Change 'i'm' to 'I'm'."
+    });
+    corrected = corrected.replace(/\bi'm\b/gi, "I'm");
+  }
+
+  // 5. Common Contraction typos
+  const contractions = [
+    { regex: /\bdont\b/gi, correct: "don't", word: "dont" },
+    { regex: /\bcant\b/gi, correct: "can't", word: "cant" },
+    { regex: /\bwont\b/gi, correct: "won't", word: "wont" },
+    { regex: /\bshouldnt\b/gi, correct: "shouldn't", word: "shouldnt" },
+    { regex: /\bcouldnt\b/gi, correct: "couldn't", word: "couldnt" },
+    { regex: /\bhavent\b/gi, correct: "haven't", word: "havent" },
+    { regex: /\bhasnt\b/gi, correct: "hasn't", word: "hasnt" }
+  ];
+  contractions.forEach(item => {
+    if (item.regex.test(corrected)) {
+      mistakes.push({
+        type: "Grammar / Spelling",
+        desc: `Missing apostrophe in contraction '${item.word}'.`,
+        fix: `Replace '${item.word}' with '${item.correct}'.`
+      });
+      corrected = corrected.replace(item.regex, item.correct);
+    }
+  });
+
+  // 6. Common Spelling Typos
+  const typos = [
+    { regex: /\brecieve\b/gi, correct: "receive", word: "recieve" },
+    { regex: /\bseperate\b/gi, correct: "separate", word: "seperate" },
+    { regex: /\balot\b/gi, correct: "a lot", word: "alot" },
+    { regex: /\bteh\b/gi, correct: "the", word: "teh" },
+    { regex: /\bdefinately\b/gi, correct: "definitely", word: "definately" },
+    { regex: /\barguement\b/gi, correct: "argument", word: "arguement" }
+  ];
+  typos.forEach(item => {
+    if (item.regex.test(corrected)) {
+      mistakes.push({
+        type: "Spelling",
+        desc: `Spelling typo '${item.word}' detected.`,
+        fix: `Replace '${item.word}' with '${item.correct}'.`
+      });
+      corrected = corrected.replace(item.regex, item.correct);
+    }
+  });
+
+  // 7. Technical term capitalization
+  const techTerms = [
+    { regex: /\bjavascript\b/gi, correct: "JavaScript", word: "javascript" },
+    { regex: /\bhtml\b/gi, correct: "HTML", word: "html" },
+    { regex: /\bcss\b/gi, correct: "CSS", word: "css" },
+    { regex: /\bsql\b/gi, correct: "SQL", word: "sql" },
+    { regex: /\bgit\b/gi, correct: "Git", word: "git" },
+    { regex: /\bapi\b/gi, correct: "API", word: "api" },
+    { regex: /\bapis\b/gi, correct: "APIs", word: "apis" }
+  ];
+  techTerms.forEach(item => {
+    if (item.regex.test(corrected)) {
+      const matches = corrected.match(item.regex);
+      const incorrectMatch = matches.some(m => m !== item.correct);
+      if (incorrectMatch) {
+        mistakes.push({
+          type: "Capitalization",
+          desc: `Technical term '${item.word}' should be properly capitalized as '${item.correct}'.`,
+          fix: `Capitalize to '${item.correct}'.`
+        });
+        corrected = corrected.replace(item.regex, item.correct);
+      }
+    }
+  });
+
+  // 8. Capitalize first letter of each sentence
+  let sentenceRegex = /(^\s*|[.!?]\s+)([a-z])/g;
+  if (sentenceRegex.test(corrected)) {
+    mistakes.push({
+      type: "Capitalization",
+      desc: "Sentences must begin with a capital letter.",
+      fix: "Capitalize the first letter of each sentence."
+    });
+    corrected = corrected.replace(/(^\s*|[.!?]\s+)([a-z])/g, (match, prefix, char) => {
+      return prefix + char.toUpperCase();
+    });
+  }
+
+  return {
+    mistakes,
+    correctedText: corrected
+  };
+};

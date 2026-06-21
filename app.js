@@ -125,7 +125,23 @@ const panels = {
 document.addEventListener('DOMContentLoaded', () => {
   setupAuthEventListeners();
   checkExistingSession();
+  setupMidnightResetCheck();
 });
+
+function setupMidnightResetCheck() {
+  setInterval(() => {
+    if (activeUser && userProgress) {
+      const todayStr = getTodayDateString();
+      if (userProgress.lastActiveDate && userProgress.lastActiveDate !== todayStr) {
+        // Date changed! Perform daily reset
+        checkDailyReset();
+        // Reload dashboard
+        loadUserDashboard();
+        showToast("New Day Started!", "Welcome to today's challenges. Daily tasks have been reset!", "success");
+      }
+    }
+  }, 30000); // Check every 30 seconds
+}
 
 // --- SESSION CHECK ---
 function checkExistingSession() {
@@ -216,6 +232,9 @@ function checkDailyReset() {
     userProgress.writingContent = "";
     userProgress.writingSubmitted = false;
     userProgress.theorySolved = false;
+    
+    // Save lastActiveDate to todayStr so reset doesn't run again today
+    userProgress.lastActiveDate = todayStr;
     
     saveProgressToStorage();
   }

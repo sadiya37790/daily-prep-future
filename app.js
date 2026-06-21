@@ -1298,15 +1298,11 @@ function loadAptitudeQuestions() {
     // Render options
     let optionsHtml = "";
     q.options.forEach((opt, optIdx) => {
-      let optionClass = "option-btn";
       const isSelected = currentQuizAnswers[idx] === optIdx;
-
+      let optionClass = "option-btn";
       if (isCompleted) {
-        if (optIdx === q.answer) {
-          optionClass += " correct";
-        } else if (isSelected) {
-          optionClass += " wrong";
-        }
+        if (optIdx === q.answer) optionClass += " correct";
+        else if (isSelected) optionClass += " wrong";
       } else if (isSelected) {
         optionClass += " selected";
       }
@@ -1325,30 +1321,58 @@ function loadAptitudeQuestions() {
         ${optionsHtml}
       </div>
       
-      ${isCompleted ? `
-        <div class="question-actions" style="margin-top: 0.75rem;">
-          <button class="show-solution-btn" id="${showSolutionBtnId}">Show Solution Explanation</button>
-        </div>
-        <div id="${solutionId}" class="solution-box hidden">
-          <h5>Step-by-Step Explanation</h5>
-          <p>${q.explanation}</p>
-        </div>
-      ` : ''}
+      <div class="question-actions" style="margin-top: 0.75rem;">
+        <button class="show-solution-btn" id="${showSolutionBtnId}">Show Solution</button>
+      </div>
+      <div id="${solutionId}" class="solution-box hidden">
+        <h5>Step-by-Step Explanation</h5>
+        <p>${q.explanation}</p>
+      </div>
     `;
 
     questionsList.appendChild(card);
 
-    // Solution toggler (only if quiz is completed)
+    // Helper to dynamically update option styles based on solution visibility
+    const updateOptionStyles = (isSolRevealed) => {
+      const selectedOptIdx = currentQuizAnswers[idx];
+      card.querySelectorAll('.option-btn').forEach(btn => {
+        const optIdx = parseInt(btn.getAttribute('data-opt'));
+        btn.classList.remove('selected', 'correct', 'wrong');
+        
+        if (isCompleted) {
+          if (optIdx === q.answer) {
+            btn.classList.add('correct');
+          } else if (selectedOptIdx === optIdx) {
+            btn.classList.add('wrong');
+          }
+        } else {
+          if (selectedOptIdx === optIdx) {
+            btn.classList.add('selected');
+          }
+          if (isSolRevealed) {
+            if (optIdx === q.answer) {
+              btn.classList.add('correct');
+            } else if (selectedOptIdx === optIdx) {
+              btn.classList.add('wrong');
+            }
+          }
+        }
+      });
+    };
+
+    // Solution toggler
     const toggleBtn = card.querySelector('.show-solution-btn');
     if (toggleBtn) {
       const solBox = document.getElementById(solutionId);
       toggleBtn.onclick = () => {
         if (solBox.classList.contains('hidden')) {
           solBox.classList.remove('hidden');
-          toggleBtn.textContent = "Hide Solution Explanation";
+          toggleBtn.textContent = "Hide Solution";
+          updateOptionStyles(true);
         } else {
           solBox.classList.add('hidden');
-          toggleBtn.textContent = "Show Solution Explanation";
+          toggleBtn.textContent = "Show Solution";
+          updateOptionStyles(false);
         }
       };
     }
@@ -1364,14 +1388,9 @@ function loadAptitudeQuestions() {
           quizState.answers = currentQuizAnswers;
           saveProgressToStorage();
           
-          card.querySelectorAll('.option-btn').forEach(b => {
-            const bOpt = parseInt(b.getAttribute('data-opt'));
-            if (bOpt === optIdx) {
-              b.classList.add('selected');
-            } else {
-               b.classList.remove('selected');
-            }
-          });
+          const solBox = document.getElementById(solutionId);
+          const isSolRevealed = !solBox.classList.contains('hidden');
+          updateOptionStyles(isSolRevealed);
         };
       });
     }

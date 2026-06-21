@@ -65,7 +65,10 @@ const createDefaultProgress = () => ({
   writingContent: "",
   writingSubmitted: false,
   theorySolved: false,
-  bookmarkedAptitude: [] // format: [{ topic: 'number-systems', topicTitle: 'Number Systems', question: qObj }]
+  bookmarkedAptitude: [], // format: [{ topic: 'number-systems', topicTitle: 'Number Systems', question: qObj }]
+  xp: 0,
+  level: 1,
+  theme: 'dark'
 });
 
 // --- DOM ELEMENTS ---
@@ -195,8 +198,16 @@ function loadUserDashboard() {
   // Check date transitions
   checkDailyReset();
   
+  // Apply theme
+  if (userProgress.theme === 'light') {
+    document.body.classList.add('light-theme');
+  } else {
+    document.body.classList.remove('light-theme');
+  }
+
   // Render views
   updateOverallProgress();
+  updateGamifiedDashboard();
   renderHeatmap();
   setupDashboardEventListeners();
   
@@ -239,6 +250,7 @@ function checkDailyReset() {
     userProgress.lastActiveDate = todayStr;
     
     saveProgressToStorage();
+    updateGamifiedDashboard();
   }
 }
 
@@ -616,6 +628,7 @@ function setupDashboardEventListeners() {
     tabs[key].addEventListener('click', () => switchTab(key));
   });
   setupCompanionDrawerEvents();
+  setupSettingsModal();
 }
 
 function switchTab(tabKey) {
@@ -1037,6 +1050,7 @@ function renderDSAPanel() {
       const topicData = dsaDatabase[dsaTopicMapping[topic]];
       renderDSAPanel();
       showToast("Task Solved", `Marked "${topicData.questions[idx].title}" as solved!`, "success");
+      gainXp(100, `Solved "${topicData.questions[idx].title}"`);
     };
   });
 
@@ -1096,6 +1110,7 @@ function renderDSAPanel() {
         
         renderDSAPanel();
         showToast("Submission Verified", `Successfully verified "${topicData.questions[idx].title}" on LeetCode!`, "success");
+        gainXp(100, `Verified "${topicData.questions[idx].title}" on LeetCode`);
       } else {
         errorBox.textContent = `Verification Failed: ${result.message}`;
         errorBox.classList.remove('hidden');
@@ -1512,6 +1527,7 @@ function loadAptitudeQuestions() {
     saveProgressToStorage();
     
     showToast("Quiz Submitted", `You scored ${score}/10 on ${topicData.title}!`, "success");
+    gainXp(150, `Completed ${topicData.title} Quiz (Score: ${score}/10)`);
     loadAptitudeQuestions();
   };
 
@@ -1645,6 +1661,7 @@ function renderWritingPanel() {
 
     userProgress.writingSubmitted = true;
     markModuleCompleted('writing');
+    gainXp(100, "Completed paragraph writing prompt");
     renderWritingPanel();
   };
 }
@@ -1716,6 +1733,7 @@ function renderTheoryPanel() {
         btn.classList.remove('selected');
         btn.classList.add('correct');
         quizOptions.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+        gainXp(50, "Solved CS Core MCQ challenge");
       } else {
         quizResult.className = "alert alert-error";
         quizResult.textContent = "Wrong answer. Please review the flashcard content above and select again.";
@@ -1788,6 +1806,7 @@ function renderTheoryPanel() {
       // Complete the theory/sql module!
       userProgress.theorySolved = true;
       markModuleCompleted('theory');
+      gainXp(120, `Verified SQL query "${sql.title}"`);
       renderTheoryPanel();
     } else {
       sqlFeedback.className = "alert alert-error";
@@ -2030,4 +2049,231 @@ function setupCompanionDrawerEvents() {
 
   tabFormulas.onclick = () => switchDrawerTab('formulas');
   tabBookmarks.onclick = () => switchDrawerTab('bookmarks');
+}
+
+// ==================== GAMIFIED STATS & XP SYSTEM ====================
+
+function gainXp(amount, reason) {
+  if (!userProgress) return;
+  const oldLevel = Math.floor((userProgress.xp || 0) / 1000) + 1;
+  userProgress.xp = (userProgress.xp || 0) + amount;
+  const newLevel = Math.floor(userProgress.xp / 1000) + 1;
+  
+  saveProgressToStorage();
+  updateGamifiedDashboard();
+  
+  showToast(`+${amount} XP Earned`, reason, "success");
+  
+  if (newLevel > oldLevel) {
+    const rankName = getRankName(newLevel);
+    setTimeout(() => {
+      showToast("🎉 Level Up!", `Congratulations! You are now Level ${newLevel}: ${rankName}`, "success");
+    }, 1200);
+  }
+}
+
+function updateGamifiedDashboard() {
+  if (!userProgress) return;
+  
+  const level = Math.floor((userProgress.xp || 0) / 1000) + 1;
+  const currentXp = (userProgress.xp || 0) % 1000;
+  
+  userProgress.level = level;
+
+  // Update Rank & Level Labels
+  const rankNameEl = document.getElementById('user-rank-name');
+  if (rankNameEl) {
+    rankNameEl.textContent = `Lvl ${level}: ${getRankName(level)}`;
+  }
+  
+  const xpFillEl = document.getElementById('xp-bar-fill');
+  if (xpFillEl) {
+    const pct = (currentXp / 1000) * 100;
+    xpFillEl.style.width = `${pct}%`;
+  }
+  
+  const xpCurrentEl = document.getElementById('xp-current-val');
+  if (xpCurrentEl) {
+    xpCurrentEl.textContent = `${currentXp} / 1000 XP`;
+  }
+  
+  const xpTargetEl = document.getElementById('xp-target-val');
+  if (xpTargetEl) {
+    xpTargetEl.textContent = `${1000 - currentXp} XP to next level`;
+  }
+
+  // Update Quests Board
+  // 1. DSA Solved Count
+  let todayDsaSolvedCount = 0;
+  const dayOffset = getDayOfYear();
+  
+  const dsaQuestions = [];
+  Object.keys(dsaDatabase).forEach(topic => {
+    dsaDatabase[topic].questions.forEach((q, idx) => {
+      dsaQuestions.push({ ...q, topicKey: topic, originalIndex: idx });
+    });
+  });
+  
+  const totalDsaQs = dsaQuestions.length;
+  const startIdx = (dayOffset * 3) % totalDsaQs;
+  const todayQuestions = [];
+  for (let i = 0; i < 3; i++) {
+    todayQuestions.push(dsaQuestions[(startIdx + i) % totalDsaQs]);
+  }
+  
+  todayQuestions.forEach(q => {
+    const isSolved = userProgress.dsaSolved[q.topicKey] && userProgress.dsaSolved[q.topicKey][q.originalIndex];
+    if (isSolved) todayDsaSolvedCount++;
+  });
+
+  const questDsaStatus = document.getElementById('quest-dsa-status');
+  const questDsaEl = document.getElementById('quest-dsa');
+  if (questDsaStatus && questDsaEl) {
+    questDsaStatus.textContent = `${todayDsaSolvedCount} / 3`;
+    if (todayDsaSolvedCount === 3) {
+      questDsaEl.style.color = 'var(--success)';
+      questDsaStatus.innerHTML = `3 / 3 ✅`;
+    } else {
+      questDsaEl.style.color = 'var(--text-secondary)';
+    }
+  }
+
+  // 2. Aptitude Completed
+  const questAptitudeStatus = document.getElementById('quest-aptitude-status');
+  const questAptitudeEl = document.getElementById('quest-aptitude');
+  if (questAptitudeStatus && questAptitudeEl) {
+    const done = userProgress.todayCompletion.aptitude;
+    questAptitudeStatus.innerHTML = done ? `1 / 1 ✅` : `0 / 1`;
+    questAptitudeEl.style.color = done ? 'var(--success)' : 'var(--text-secondary)';
+  }
+
+  // 3. Writing Completed
+  const questWritingStatus = document.getElementById('quest-writing-status');
+  const questWritingEl = document.getElementById('quest-writing');
+  if (questWritingStatus && questWritingEl) {
+    const done = userProgress.todayCompletion.writing;
+    questWritingStatus.innerHTML = done ? `1 / 1 ✅` : `0 / 1`;
+    questWritingEl.style.color = done ? 'var(--success)' : 'var(--text-secondary)';
+  }
+
+  // 4. CS Core Theory Completed
+  const questTheoryStatus = document.getElementById('quest-theory-status');
+  const questTheoryEl = document.getElementById('quest-theory');
+  if (questTheoryStatus && questTheoryEl) {
+    const done = userProgress.todayCompletion.theory;
+    questTheoryStatus.innerHTML = done ? `1 / 1 ✅` : `0 / 1`;
+    questTheoryEl.style.color = done ? 'var(--success)' : 'var(--text-secondary)';
+  }
+}
+
+function getRankName(level) {
+  const ranks = [
+    "SDE Apprentice",       // Level 1
+    "Junior Engineer",      // Level 2
+    "System Architect",     // Level 3
+    "Full-Stack Developer", // Level 4
+    "Technical Lead",       // Level 5
+    "Staff Engineer",       // Level 6
+    "Senior Architect",     // Level 7
+    "Principal Engineer",   // Level 8
+    "VP of Engineering",    // Level 9
+    "Distinguished Fellow"  // Level 10+
+  ];
+  if (level <= 0) return ranks[0];
+  if (level > ranks.length) return ranks[ranks.length - 1];
+  return ranks[level - 1];
+}
+
+// ==================== WORKSPACE SETTINGS MODAL LOGIC ====================
+
+function setupSettingsModal() {
+  const toggleBtn = document.getElementById('settings-toggle-btn');
+  const modal = document.getElementById('modal-settings');
+  const closeBtn = document.getElementById('settings-close-btn');
+  const saveBtn = document.getElementById('settings-save-btn');
+  const usernameInput = document.getElementById('settings-username-input');
+  
+  const themeBtnDark = document.getElementById('theme-btn-dark');
+  const themeBtnLight = document.getElementById('theme-btn-light');
+
+  if (!toggleBtn || !modal || !closeBtn || !saveBtn || !usernameInput) return;
+
+  let chosenTheme = userProgress.theme || 'dark';
+
+  // Toggle Modal open
+  toggleBtn.onclick = () => {
+    usernameInput.value = activeUser.username;
+    chosenTheme = userProgress.theme || 'dark';
+    
+    // Select theme UI buttons
+    if (chosenTheme === 'light') {
+      themeBtnLight.classList.add('active-theme');
+      themeBtnDark.classList.remove('active-theme');
+    } else {
+      themeBtnDark.classList.add('active-theme');
+      themeBtnLight.classList.remove('active-theme');
+    }
+    
+    modal.classList.remove('hidden');
+  };
+
+  // Close modal
+  closeBtn.onclick = () => {
+    modal.classList.add('hidden');
+  };
+
+  // Theme Toggles
+  themeBtnDark.onclick = () => {
+    chosenTheme = 'dark';
+    themeBtnDark.classList.add('active-theme');
+    themeBtnLight.classList.remove('active-theme');
+  };
+
+  themeBtnLight.onclick = () => {
+    chosenTheme = 'light';
+    themeBtnLight.classList.add('active-theme');
+    themeBtnDark.classList.remove('active-theme');
+  };
+
+  // Save click
+  saveBtn.onclick = () => {
+    const newUsername = usernameInput.value.trim();
+    if (!newUsername) {
+      alert("Username cannot be empty.");
+      return;
+    }
+
+    const oldUsername = activeUser.username;
+    
+    // Save theme configuration
+    userProgress.theme = chosenTheme;
+    if (chosenTheme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+
+    // Save username details if changed
+    if (newUsername !== oldUsername) {
+      activeUser.username = newUsername;
+      localStorage.setItem('dailyprep_active_user', JSON.stringify(activeUser));
+
+      // Migrate storage keys
+      localStorage.removeItem(`dailyprep_progress_${oldUsername}`);
+      localStorage.setItem(`dailyprep_progress_${newUsername}`, JSON.stringify(userProgress));
+
+      // Update UI components
+      const displayUsername = document.getElementById('display-username');
+      const displayAvatar = document.getElementById('display-avatar');
+      if (displayUsername) displayUsername.textContent = newUsername;
+      if (displayAvatar && !activeUser.avatarUrl) {
+        displayAvatar.textContent = newUsername.charAt(0).toUpperCase();
+      }
+    }
+
+    saveProgressToStorage();
+    updateGamifiedDashboard();
+    modal.classList.add('hidden');
+    showToast("Settings Saved", "Workspace settings updated successfully!", "success");
+  };
 }

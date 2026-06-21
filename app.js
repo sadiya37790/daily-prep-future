@@ -213,6 +213,9 @@ function loadUserDashboard() {
   
   // Load initial tab (DSA)
   switchTab('dsa');
+  
+  // Check inactive registered users and notify them by simulated email
+  checkInactiveUsersAndNotify();
 }
 
 // Check if a new calendar day has started, reset daily metrics but save streaks
@@ -251,6 +254,48 @@ function checkDailyReset() {
     
     saveProgressToStorage();
     updateGamifiedDashboard();
+  }
+}
+
+// Check inactive registered users and notify them by simulated email
+function checkInactiveUsersAndNotify() {
+  const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
+  const todayStr = getTodayDateString();
+  let remindedCount = 0;
+  let remindedList = [];
+
+  users.forEach(u => {
+    // Skip checking if it is the currently active user
+    if (activeUser && u.username === activeUser.username) return;
+
+    // Load progress for this user
+    const savedProgress = localStorage.getItem(`dailyprep_progress_${u.username}`);
+    if (savedProgress) {
+      const progress = JSON.parse(savedProgress);
+      // Check if they completed all 4 modules today
+      const completedModules = Object.values(progress.todayCompletion || {}).filter(Boolean).length;
+      if (completedModules < 4) {
+        // They haven't completed today's prep! Send email.
+        const reminderKey = `dailyprep_reminder_sent_${u.username}_${todayStr}`;
+        if (!localStorage.getItem(reminderKey)) {
+          localStorage.setItem(reminderKey, 'true');
+          remindedCount++;
+          remindedList.push(`${u.username} (${u.email})`);
+          
+          console.log(`[Email Alert] Daily Prep reminder sent to ${u.email}`);
+        }
+      }
+    }
+  });
+
+  if (remindedCount > 0) {
+    setTimeout(() => {
+      showToast(
+        "Simulated Email Alerts",
+        `Sent daily reminder notification to ${remindedCount} inactive user(s): ${remindedList.join(', ')}.`,
+        "warning"
+      );
+    }, 2500);
   }
 }
 

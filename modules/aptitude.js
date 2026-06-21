@@ -818,7 +818,7 @@ window.aptitudeDatabase = {
  * @param {number} seedOffset - Attempt number offset to alter the seed
  * @returns {Array} List of 10 randomized questions
  */
-window.getRandomQuestions = function(topicKey, seedOffset = 0) {
+window.getRandomQuestions = function(topicKey, seedOffset = 0, daySeedOffset = 0) {
   const topic = window.aptitudeDatabase[topicKey];
   if (!topic || !topic.questions) return [];
   
@@ -835,7 +835,7 @@ window.getRandomQuestions = function(topicKey, seedOffset = 0) {
   const start = new Date(d.getFullYear(), 0, 0);
   const diff = d - start;
   const oneDay = 1000 * 60 * 60 * 24;
-  const dayOfYear = Math.floor(diff / oneDay);
+  const dayOfYear = Math.floor(diff / oneDay) + daySeedOffset;
 
   // Generate a distinct seed from today's date + attempt counter (seedOffset)
   const seed = (d.getFullYear() * 1000) + dayOfYear + seedOffset;

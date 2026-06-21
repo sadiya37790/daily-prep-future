@@ -1137,14 +1137,34 @@ function loadAptitudeQuestions() {
   const topicData = aptitudeDatabase[activeAptitudeTopic];
   if (!topicData) return;
 
-  // Initialize or fetch state from user progress
+  // Check if all modules are completed to load tomorrow's preview
+  const completedModulesCount = Object.values(userProgress.todayCompletion).filter(v => v).length;
+  const allCompletedToday = completedModulesCount === 4;
+
   let quizState = userProgress.aptitudeQuizzes[activeAptitudeTopic];
-  if (!quizState) {
+
+  if (allCompletedToday) {
+    // Tomorrow preview mode for Aptitude!
     if (!userProgress.aptitudeAttempts) {
       userProgress.aptitudeAttempts = {};
     }
     const attempt = userProgress.aptitudeAttempts[activeAptitudeTopic] || 0;
-    const randomQs = window.getRandomQuestions(activeAptitudeTopic, attempt);
+    const randomQs = window.getRandomQuestions(activeAptitudeTopic, attempt, 1); // daySeedOffset = 1
+    
+    quizState = {
+      questions: randomQs,
+      answers: {},
+      score: null,
+      completed: false,
+      attempt: attempt,
+      isPreview: true
+    };
+  } else if (!quizState) {
+    if (!userProgress.aptitudeAttempts) {
+      userProgress.aptitudeAttempts = {};
+    }
+    const attempt = userProgress.aptitudeAttempts[activeAptitudeTopic] || 0;
+    const randomQs = window.getRandomQuestions(activeAptitudeTopic, attempt, 0);
     quizState = {
       questions: randomQs,
       answers: {},
@@ -1219,7 +1239,10 @@ function loadAptitudeQuestions() {
       notesArea.classList.add('hidden');
       questionsList.classList.remove('hidden');
 
-      if (isCompleted) {
+      if (quizState.isPreview) {
+        scoreCard.classList.add('hidden');
+        quizFooter.classList.add('hidden');
+      } else if (isCompleted) {
         scoreCard.classList.remove('hidden');
         document.getElementById('aptitude-score-value').textContent = `${quizState.score} / 10`;
         quizFooter.classList.add('hidden');
@@ -1239,6 +1262,28 @@ function loadAptitudeQuestions() {
     switchTabUI('quiz');
   } else {
     switchTabUI(activeAptitudeTab);
+  }
+
+  // Prepend tomorrow's preview banner if in preview mode
+  if (quizState.isPreview) {
+    const previewAlert = document.createElement('div');
+    previewAlert.className = "alert alert-success";
+    previewAlert.style.marginBottom = "1.5rem";
+    previewAlert.style.display = "flex";
+    previewAlert.style.alignItems = "center";
+    previewAlert.style.justifyContent = "space-between";
+    previewAlert.style.flexWrap = "wrap";
+    previewAlert.style.gap = "8px";
+    previewAlert.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.2rem;">🔒</span>
+        <div>
+          <strong style="color: #fff;">Today's tasks finished!</strong> Showing a locked preview of tomorrow's Quantitative Aptitude quiz.
+        </div>
+      </div>
+      <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); color: var(--text-secondary); padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid rgba(255,255,255,0.03);">Tomorrow's Quiz</span>
+    `;
+    questionsList.appendChild(previewAlert);
   }
 
   // Populate Quiz Questions
@@ -1267,7 +1312,7 @@ function loadAptitudeQuestions() {
       }
 
       optionsHtml += `
-        <button class="${optionClass}" data-q="${idx}" data-opt="${optIdx}" ${isCompleted ? 'disabled' : ''}>
+        <button class="${optionClass}" data-q="${idx}" data-opt="${optIdx}" ${isCompleted || quizState.isPreview ? 'disabled' : ''}>
           ${String.fromCharCode(65 + optIdx)}. ${opt}
         </button>
       `;
@@ -1389,8 +1434,16 @@ function renderWritingPanel() {
   const statusMsg = document.getElementById('writing-status-msg');
   const warningAlert = document.getElementById('anti-cheat-alert');
 
-  // Rotate prompts daily based on day of year
-  const dateHash = getDayOfYear() % dailyPrompts.length;
+  // Rotate prompts daily based on day of year. If all completed today, load tomorrow's preview prompt!
+  const completedModulesCount = Object.values(userProgress.todayCompletion).filter(v => v).length;
+  const allCompletedToday = completedModulesCount === 4;
+  let daySeed = getDayOfYear();
+  let isPreview = false;
+  if (allCompletedToday) {
+    daySeed = daySeed + 1;
+    isPreview = true;
+  }
+  const dateHash = daySeed % dailyPrompts.length;
   promptText.textContent = dailyPrompts[dateHash];
 
   // Load saved content
@@ -1399,13 +1452,26 @@ function renderWritingPanel() {
 
   const isCompleted = userProgress.todayCompletion.writing || userProgress.writingSubmitted;
 
-  if (isCompleted) {
+  if (isPreview) {
+    editor.disabled = true;
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.5';
+    submitBtn.innerHTML = '🔒 Locked Preview';
+    submitBtn.classList.remove('hidden');
+    statusMsg.innerHTML = `<span style="color:var(--warning)">🔒 Today's tasks finished! Showing a locked preview of tomorrow's writing prompt.</span>`;
+  } else if (isCompleted) {
     editor.disabled = true;
     submitBtn.classList.add('hidden');
+    submitBtn.disabled = false;
+    submitBtn.style.opacity = '1';
+    submitBtn.innerHTML = 'Submit Paragraph';
     statusMsg.innerHTML = `<span style="color:var(--success)">✓ Your paragraph was submitted successfully today!</span>`;
   } else {
     editor.disabled = false;
     submitBtn.classList.remove('hidden');
+    submitBtn.disabled = false;
+    submitBtn.style.opacity = '1';
+    submitBtn.innerHTML = 'Submit Paragraph';
     statusMsg.textContent = "";
   }
 
@@ -1475,7 +1541,14 @@ function renderWritingPanel() {
 let selectedMCQOption = null;
 
 function renderTheoryPanel() {
-  const dateHash = getDayOfYear();
+  const completedModulesCount = Object.values(userProgress.todayCompletion).filter(v => v).length;
+  const allCompletedToday = completedModulesCount === 4;
+  let dateHash = getDayOfYear();
+  let isPreview = false;
+  if (allCompletedToday) {
+    dateHash = dateHash + 1;
+    isPreview = true;
+  }
   
   // Concept Flashcard Rotation
   const conceptIdx = dateHash % theoryConcepts.length;
@@ -1506,7 +1579,9 @@ function renderTheoryPanel() {
     btn.classList.add('option-btn');
     btn.textContent = opt;
 
-    if (isCompleted) {
+    if (isPreview) {
+      btn.disabled = true;
+    } else if (isCompleted) {
       btn.disabled = true;
       if (idx === quiz.answer) {
         btn.classList.add('correct');
@@ -1561,15 +1636,29 @@ function renderTheoryPanel() {
   revealSolBtn.textContent = "Reveal Standard Solution";
   solText.textContent = sql.solution;
 
-  if (isCompleted) {
+  if (isPreview) {
     sqlEditor.disabled = true;
     sqlVerifyBtn.classList.add('hidden');
+    revealSolBtn.classList.add('hidden');
+    sqlFeedback.className = "alert alert-warning";
+    sqlFeedback.textContent = "🔒 Today's tasks finished! Showing a locked preview of tomorrow's SQL challenge.";
+    sqlFeedback.classList.remove('hidden');
+    
+    // Show locked feedback on MCQ Result too
+    quizResult.className = "alert alert-warning";
+    quizResult.textContent = "🔒 Today's tasks finished! Tomorrow's MCQ is locked.";
+    quizResult.classList.remove('hidden');
+  } else if (isCompleted) {
+    sqlEditor.disabled = true;
+    sqlVerifyBtn.classList.add('hidden');
+    revealSolBtn.classList.remove('hidden');
     sqlFeedback.className = "alert alert-success";
     sqlFeedback.textContent = "✓ SQL challenge completed successfully today!";
     sqlFeedback.classList.remove('hidden');
   } else {
     sqlEditor.disabled = false;
     sqlVerifyBtn.classList.remove('hidden');
+    revealSolBtn.classList.remove('hidden');
     sqlFeedback.classList.add('hidden');
   }
 

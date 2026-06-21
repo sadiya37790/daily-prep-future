@@ -2203,24 +2203,60 @@ function updateGamifiedDashboard() {
   // Update Quests Board
   // 1. DSA Solved Count
   let todayDsaSolvedCount = 0;
-  const dayOffset = getDayOfYear();
   
-  const dsaQuestions = [];
-  Object.keys(dsaDatabase).forEach(topic => {
-    dsaDatabase[topic].questions.forEach((q, idx) => {
-      dsaQuestions.push({ ...q, topicKey: topic, originalIndex: idx });
-    });
+  const topicKeys = [
+    "arrays", "strings", "linked-lists", "stacks-queues", 
+    "trees", "graphs", "dynamic-programming", 
+    "heaps-priority-queues", "binary-search", "backtracking"
+  ];
+  
+  const dsaTopicMappingForQuests = {
+    "arrays": 0,
+    "strings": 1,
+    "linked-lists": 2,
+    "stacks-queues": 3,
+    "trees": 4,
+    "graphs": 5,
+    "dynamic-programming": 6,
+    "heaps-priority-queues": 7,
+    "binary-search": 8,
+    "backtracking": 9
+  };
+
+  const allDsaQuestions = [];
+  topicKeys.forEach((tKey) => {
+    const topicIdx = dsaTopicMappingForQuests[tKey];
+    const topicData = dsaDatabase[topicIdx];
+    if (topicData) {
+      topicData.questions.forEach((q, idx) => {
+        allDsaQuestions.push({
+          ...q,
+          topicKey: tKey,
+          questionIdx: idx
+        });
+      });
+    }
   });
+
+  const completedModulesCount = Object.values(userProgress.todayCompletion).filter(v => v).length;
+  const allCompletedToday = completedModulesCount === 4;
   
-  const totalDsaQs = dsaQuestions.length;
-  const startIdx = (dayOffset * 3) % totalDsaQs;
+  let daySeed = getDayOfYear();
+  if (allCompletedToday) {
+    daySeed = daySeed + 1; // Preview of tomorrow
+  }
+  
   const todayQuestions = [];
-  for (let i = 0; i < 3; i++) {
-    todayQuestions.push(dsaQuestions[(startIdx + i) % totalDsaQs]);
+  const totalQs = allDsaQuestions.length;
+  if (totalQs > 0) {
+    for (let i = 0; i < 3; i++) {
+      const qIdx = (daySeed * 3 + i) % totalQs;
+      todayQuestions.push(allDsaQuestions[qIdx]);
+    }
   }
   
   todayQuestions.forEach(q => {
-    const isSolved = userProgress.dsaSolved[q.topicKey] && userProgress.dsaSolved[q.topicKey][q.originalIndex];
+    const isSolved = userProgress.dsaSolved[q.topicKey] && userProgress.dsaSolved[q.topicKey][q.questionIdx];
     if (isSolved) todayDsaSolvedCount++;
   });
 

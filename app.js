@@ -76,7 +76,8 @@ const tabLogin = document.getElementById('tab-login');
 const tabSignup = document.getElementById('tab-signup');
 const formLogin = document.getElementById('form-login');
 const formSignup = document.getElementById('form-signup');
-const loginEmail = document.getElementById('login-email');
+const formForgot = document.getElementById('form-forgot');
+const loginIdentifier = document.getElementById('login-identifier');
 const loginPassword = document.getElementById('login-password');
 const signupUsername = document.getElementById('signup-username');
 const signupEmail = document.getElementById('signup-email');
@@ -84,6 +85,13 @@ const signupPassword = document.getElementById('signup-password');
 const loginAlert = document.getElementById('login-alert');
 const signupAlert = document.getElementById('signup-alert');
 const googleLoginBtn = document.getElementById('google-login-btn');
+
+// Forgot Password Form Elements
+const forgotPasswordLink = document.getElementById('forgot-password-link');
+const backToLoginLink = document.getElementById('back-to-login-link');
+const forgotEmail = document.getElementById('forgot-email');
+const forgotAlert = document.getElementById('forgot-alert');
+const forgotSuccess = document.getElementById('forgot-success');
 
 // Dashboard Header Elements
 const displayUsername = document.getElementById('display-username');
@@ -245,6 +253,7 @@ function setupAuthEventListeners() {
     tabSignup.classList.remove('active');
     formLogin.classList.remove('hidden');
     formSignup.classList.add('hidden');
+    formForgot.classList.add('hidden');
     loginAlert.classList.add('hidden');
   });
 
@@ -253,7 +262,65 @@ function setupAuthEventListeners() {
     tabLogin.classList.remove('active');
     formSignup.classList.remove('hidden');
     formLogin.classList.add('hidden');
+    formForgot.classList.add('hidden');
     signupAlert.classList.add('hidden');
+  });
+
+  // Forgot Password Link Click
+  forgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    formLogin.classList.add('hidden');
+    formSignup.classList.add('hidden');
+    formForgot.classList.remove('hidden');
+    tabLogin.parentElement.classList.add('hidden'); // Hide the tab switching buttons
+    forgotAlert.classList.add('hidden');
+    forgotSuccess.classList.add('hidden');
+    forgotEmail.value = '';
+  });
+
+  // Back to Login Link Click
+  backToLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    formForgot.classList.add('hidden');
+    formLogin.classList.remove('hidden');
+    tabLogin.parentElement.classList.remove('hidden'); // Show the tab switching buttons
+    tabLogin.classList.add('active');
+    tabSignup.classList.remove('active');
+  });
+
+  // Forgot Password Form Submit
+  formForgot.addEventListener('submit', (e) => {
+    e.preventDefault();
+    forgotAlert.classList.add('hidden');
+    forgotSuccess.classList.add('hidden');
+
+    const email = forgotEmail.value.trim();
+    const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+    if (!user) {
+      forgotAlert.textContent = "No account found with this email address.";
+      forgotAlert.classList.remove('hidden');
+      return;
+    }
+
+    // Simulate sending email
+    forgotSuccess.innerHTML = `
+      <div style="font-weight: 700; margin-bottom: 6px; color: #10b981; display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 1.1rem;">✉️</span> Password Recovered Successfully!
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">
+        A simulated email has been dispatched to <strong>${user.email}</strong>.
+      </div>
+      <div style="background: rgba(0, 0, 0, 0.4); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: left;">
+        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px;">Retrieved Details</div>
+        <div style="font-size: 0.85rem; margin-bottom: 2px;">Username: <strong style="color: #f8fafc;">${user.username}</strong></div>
+        <div style="font-size: 0.85rem;">Password: <strong style="color: #38bdf8;">${user.password}</strong></div>
+      </div>
+    `;
+    forgotSuccess.classList.remove('hidden');
+    
+    showToast("Password Recovered", `Retrieved details for ${user.username}.`, "success");
   });
 
   // Login Form Submit
@@ -261,14 +328,17 @@ function setupAuthEventListeners() {
     e.preventDefault();
     loginAlert.classList.add('hidden');
 
-    const email = loginEmail.value.trim();
+    const identifier = loginIdentifier.value.trim();
     const password = loginPassword.value;
 
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const user = users.find(u => 
+      u.email.toLowerCase() === identifier.toLowerCase() || 
+      u.username.toLowerCase() === identifier.toLowerCase()
+    );
 
     if (!user || user.password !== password) {
-      showAuthAlert(loginAlert, "Invalid email or password.");
+      showAuthAlert(loginAlert, "Invalid email, username, or password.");
       return;
     }
 

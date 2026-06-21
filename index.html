@@ -33,11 +33,14 @@
       <!-- Login Form -->
       <form id="form-login" class="auth-form">
         <div class="input-group">
-          <label for="login-email">Email Address</label>
-          <input type="email" id="login-email" required placeholder="name@domain.com">
+          <label for="login-identifier">Email or Username</label>
+          <input type="text" id="login-identifier" required placeholder="name@domain.com or coding_ninja">
         </div>
         <div class="input-group">
-          <label for="login-password">Password</label>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label for="login-password">Password</label>
+            <a href="#" id="forgot-password-link" style="font-size: 0.8rem; color: #38bdf8; text-decoration: none; font-weight: 600; transition: var(--transition-smooth);">Forgot Password?</a>
+          </div>
           <input type="password" id="login-password" required placeholder="••••••••">
         </div>
         <button type="submit" class="auth-btn">
@@ -64,6 +67,24 @@
           Create Account
         </button>
         <div id="signup-alert" class="alert alert-error hidden"></div>
+      </form>
+
+      <!-- Forgot Password Form -->
+      <form id="form-forgot" class="auth-form hidden">
+        <div style="text-align: center; margin-bottom: 0.5rem;">
+          <h3 style="font-size: 1.2rem; color: var(--text-main); font-weight: 700; margin-bottom: 4px;">Reset Password</h3>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);">Enter your email to retrieve your password.</p>
+        </div>
+        <div class="input-group">
+          <label for="forgot-email">Email Address</label>
+          <input type="email" id="forgot-email" required placeholder="name@domain.com">
+        </div>
+        <button type="submit" class="auth-btn">
+          Retrieve Password
+        </button>
+        <div id="forgot-alert" class="alert alert-error hidden"></div>
+        <div id="forgot-success" class="alert alert-success hidden"></div>
+        <a href="#" id="back-to-login-link" style="display: block; text-align: center; margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary); text-decoration: none; font-weight: 600; transition: var(--transition-smooth);">Back to Log In</a>
       </form>
 
       <div class="divider">or</div>

@@ -888,27 +888,7 @@ function renderDSAPanel() {
     }
   }
 
-  // Render a banner inside the DSA container if in tomorrow preview mode
-  if (isPreviewOnly) {
-    const previewBanner = document.createElement('div');
-    previewBanner.className = "alert alert-success";
-    previewBanner.style.marginBottom = "1.5rem";
-    previewBanner.style.display = "flex";
-    previewBanner.style.alignItems = "center";
-    previewBanner.style.justifyContent = "space-between";
-    previewBanner.style.flexWrap = "wrap";
-    previewBanner.style.gap = "8px";
-    previewBanner.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 1.2rem;">🎉</span>
-        <div>
-          <strong style="color: #fff;">Today's tasks finished!</strong> Showing a locked preview of tomorrow's DSA questions.
-        </div>
-      </div>
-      <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); color: var(--text-secondary); padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid rgba(255,255,255,0.03);">Tomorrow's Tasks</span>
-    `;
-    dsaList.appendChild(previewBanner);
-  }
+
 
   // 3. Render the 3 questions
   todayQuestions.forEach((q) => {
@@ -956,7 +936,7 @@ function renderDSAPanel() {
           </button>
           ${isPreviewOnly ? `
             <span class="lock-preview-badge" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); color: var(--text-muted); padding: 0 16px; border-radius: var(--border-radius-sm); font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; height: 38px; cursor: not-allowed; user-select: none;">
-              <span>🔒</span> Locked Preview
+              <span>📅</span> Tomorrow's Task
             </span>
           ` : isSolved ? `
             <span class="verified-badge">
@@ -1330,27 +1310,7 @@ function loadAptitudeQuestions() {
     switchTabUI(activeAptitudeTab);
   }
 
-  // Prepend tomorrow's preview banner if in preview mode
-  if (quizState.isPreview) {
-    const previewAlert = document.createElement('div');
-    previewAlert.className = "alert alert-success";
-    previewAlert.style.marginBottom = "1.5rem";
-    previewAlert.style.display = "flex";
-    previewAlert.style.alignItems = "center";
-    previewAlert.style.justifyContent = "space-between";
-    previewAlert.style.flexWrap = "wrap";
-    previewAlert.style.gap = "8px";
-    previewAlert.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 1.2rem;">🔒</span>
-        <div>
-          <strong style="color: #fff;">Today's tasks finished!</strong> Showing a locked preview of tomorrow's Quantitative Aptitude quiz.
-        </div>
-      </div>
-      <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); color: var(--text-secondary); padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid rgba(255,255,255,0.03);">Tomorrow's Quiz</span>
-    `;
-    questionsList.appendChild(previewAlert);
-  }
+
 
   // Populate Quiz Questions
   quizState.questions.forEach((q, idx) => {
@@ -1584,9 +1544,9 @@ function renderWritingPanel() {
     editor.disabled = true;
     submitBtn.disabled = true;
     submitBtn.style.opacity = '0.5';
-    submitBtn.innerHTML = '🔒 Locked Preview';
-    submitBtn.classList.remove('hidden');
-    statusMsg.innerHTML = `<span style="color:var(--warning)">🔒 Today's tasks finished! Showing a locked preview of tomorrow's writing prompt.</span>`;
+    submitBtn.innerHTML = "Tomorrow's Prompt";
+    submitBtn.classList.add('hidden');
+    statusMsg.innerHTML = "";
   } else if (isCompleted) {
     editor.disabled = true;
     submitBtn.classList.add('hidden');
@@ -1770,14 +1730,8 @@ function renderTheoryPanel() {
     sqlEditor.disabled = true;
     sqlVerifyBtn.classList.add('hidden');
     revealSolBtn.classList.add('hidden');
-    sqlFeedback.className = "alert alert-warning";
-    sqlFeedback.textContent = "🔒 Today's tasks finished! Showing a locked preview of tomorrow's SQL challenge.";
-    sqlFeedback.classList.remove('hidden');
-    
-    // Show locked feedback on MCQ Result too
-    quizResult.className = "alert alert-warning";
-    quizResult.textContent = "🔒 Today's tasks finished! Tomorrow's MCQ is locked.";
-    quizResult.classList.remove('hidden');
+    sqlFeedback.classList.add('hidden');
+    quizResult.classList.add('hidden');
   } else if (isCompleted) {
     sqlEditor.disabled = true;
     sqlVerifyBtn.classList.add('hidden');
@@ -2075,6 +2029,8 @@ function gainXp(amount, reason) {
 function updateGamifiedDashboard() {
   if (!userProgress) return;
   
+  updateCalendarAndStreakUI();
+  
   const level = Math.floor((userProgress.xp || 0) / 1000) + 1;
   const currentXp = (userProgress.xp || 0) % 1000;
   
@@ -2276,4 +2232,47 @@ function setupSettingsModal() {
     modal.classList.add('hidden');
     showToast("Settings Saved", "Workspace settings updated successfully!", "success");
   };
+}
+
+function updateCalendarAndStreakUI() {
+  const d = new Date();
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  
+  const monthEl = document.getElementById('cal-month');
+  const dayEl = document.getElementById('cal-day');
+  const yearEl = document.getElementById('cal-year');
+  const streakCountEl = document.getElementById('streak-count');
+  const streakIconEl = document.getElementById('streak-fire-icon');
+  const streakMsgEl = document.getElementById('streak-message');
+
+  if (monthEl) monthEl.textContent = months[d.getMonth()];
+  if (dayEl) dayEl.textContent = d.getDate();
+  if (yearEl) yearEl.textContent = d.getFullYear();
+
+  if (userProgress) {
+    const streak = userProgress.streak || 0;
+    if (streakCountEl) {
+      streakCountEl.textContent = `${streak} Day${streak !== 1 ? 's' : ''}`;
+    }
+    
+    let emoji = "🔥";
+    let message = "Start your daily quest to build consistency!";
+    
+    if (streak === 0) {
+      emoji = "❄️";
+      message = "Start a daily quest to ignite your streak!";
+    } else if (streak <= 3) {
+      emoji = "🔥";
+      message = "Streak ignited! Keep up the daily practice.";
+    } else if (streak <= 7) {
+      emoji = "⚡🔥";
+      message = "Hot streak! You're building solid SDE habits.";
+    } else {
+      emoji = "👑🔥";
+      message = "Legendary consistency! Placement ready status!";
+    }
+    
+    if (streakIconEl) streakIconEl.textContent = emoji;
+    if (streakMsgEl) streakMsgEl.textContent = message;
+  }
 }

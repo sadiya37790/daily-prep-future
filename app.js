@@ -476,6 +476,15 @@ function setupAuthEventListeners() {
     saveProgressToStorage();
 
     loadUserDashboard();
+
+    // Trigger simulated welcome email notification toast
+    setTimeout(() => {
+      showToast(
+        "Simulated Email Sent",
+        `Welcome email dispatched to ${email}. Thank you for registering at DailyPrep!`,
+        "success"
+      );
+    }, 1500);
   });
 
   // Google Login Simulation
@@ -651,12 +660,24 @@ function setupAuthEventListeners() {
         
         // Ensure progress object exists for this Google login
         const savedProgress = localStorage.getItem(`dailyprep_progress_${activeUser.username}`);
+        let isFirstLogin = false;
         if (!savedProgress) {
           userProgress = createDefaultProgress();
           saveProgressToStorage();
+          isFirstLogin = true;
         }
         
         loadUserDashboard();
+
+        if (isFirstLogin) {
+          setTimeout(() => {
+            showToast(
+              "Simulated Email Sent",
+              `Welcome email dispatched to ${activeUser.email}. Thank you for registering at DailyPrep!`,
+              "success"
+            );
+          }, 1500);
+        }
       }
     };
     

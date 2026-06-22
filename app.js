@@ -575,6 +575,25 @@ function saveProgressToStorage() {
 
 // --- AUTH LOGIC ---
 function setupAuthEventListeners() {
+  // Password Visibility Toggle
+  const toggleLoginPass = document.getElementById('toggle-login-password');
+  if (toggleLoginPass) {
+    toggleLoginPass.addEventListener('click', () => {
+      const type = loginPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+      loginPassword.setAttribute('type', type);
+      toggleLoginPass.textContent = type === 'password' ? '👁️' : '🙈';
+    });
+  }
+
+  const toggleSignupPass = document.getElementById('toggle-signup-password');
+  if (toggleSignupPass) {
+    toggleSignupPass.addEventListener('click', () => {
+      const type = signupPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+      signupPassword.setAttribute('type', type);
+      toggleSignupPass.textContent = type === 'password' ? '👁️' : '🙈';
+    });
+  }
+
   // Tab Switching
   tabLogin.addEventListener('click', () => {
     tabLogin.classList.add('active');

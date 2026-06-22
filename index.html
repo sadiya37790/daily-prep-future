@@ -41,7 +41,10 @@
             <label for="login-password">Password</label>
             <a href="#" id="forgot-password-link" style="font-size: 0.8rem; color: #38bdf8; text-decoration: none; font-weight: 600; transition: var(--transition-smooth);">Forgot Password?</a>
           </div>
-          <input type="password" id="login-password" required placeholder="••••••••">
+          <div style="position: relative; width: 100%;">
+            <input type="password" id="login-password" required placeholder="••••••••" style="width: 100%; padding-right: 40px;">
+            <button type="button" id="toggle-login-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; padding: 0; outline: none; transition: color 0.2s;">👁️</button>
+          </div>
         </div>
         <button type="submit" class="auth-btn">
           Log In
@@ -61,7 +64,10 @@
         </div>
         <div class="input-group">
           <label for="signup-password">Password</label>
-          <input type="password" id="signup-password" required placeholder="Min 6 characters">
+          <div style="position: relative; width: 100%;">
+            <input type="password" id="signup-password" required placeholder="Min 6 characters" style="width: 100%; padding-right: 40px;">
+            <button type="button" id="toggle-signup-password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; padding: 0; outline: none; transition: color 0.2s;">👁️</button>
+          </div>
         </div>
         <button type="submit" class="auth-btn">
           Create Account

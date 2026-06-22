@@ -1,8 +1,3 @@
-// --- CONFIGURATION ---
-// Paste your Google Apps Script Web App URL here to enable automatic real email delivery.
-// If empty, the application will fallback to showing simulated toasts (perfect for offline testing).
-const GOOGLE_SCRIPT_URL = "";
-
 const { dsaDatabase, verifyLeetCodeSubmission } = window;
 const { aptitudeDatabase } = window;
 const { dailyPrompts, analyzeParagraph } = window;
@@ -55,35 +50,28 @@ function showToast(title, desc, type = 'success') {
 
 // --- EMAIL NOTIFICATION DISPATCHER ---
 function sendEmailNotification(toEmail, subject, body) {
-  if (!GOOGLE_SCRIPT_URL) {
-    console.log(`[Simulated Email Alert] Sent to ${toEmail}. Subject: ${subject}. Body: ${body}`);
-    showToast(
-      "Simulated Email Sent",
-      `Welcome/reminder dispatched to ${toEmail}.`,
-      "success"
-    );
-    return;
-  }
-
   // Show toast that it's dispatching
   showToast("Email Dispatching", `Sending real email to ${toEmail}...`, "info");
   
-  fetch(GOOGLE_SCRIPT_URL, {
+  fetch(`https://formsubmit.co/ajax/${toEmail}`, {
     method: "POST",
     headers: {
-      'Content-Type': 'text/plain;charset=utf-8'
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
     },
     body: JSON.stringify({
-      to: toEmail,
-      subject: subject,
-      body: body
+      _subject: subject,
+      message: body,
+      _template: "box"
     })
   })
-  .then(() => {
+  .then(res => res.json())
+  .then(data => {
+    console.log("[FormSubmit Success]", data);
     showToast("Email Dispatched", `Notification successfully sent to ${toEmail}!`, "success");
   })
   .catch(err => {
-    console.error("[Email Relay Error]", err);
+    console.error("[FormSubmit Error]", err);
     showToast("Email Failed", `Failed to send email to ${toEmail}. Check console.`, "warning");
   });
 }

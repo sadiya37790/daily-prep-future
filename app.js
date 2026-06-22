@@ -105,6 +105,7 @@ function syncUserStatsToDatabase() {
     localUsers[userIdx].streak = payload.streak;
     localUsers[userIdx].completedTodayCount = payload.completedTodayCount;
     localStorage.setItem('dailyprep_users', JSON.stringify(localUsers));
+    loadSidebarLeaderboardRank();
   }
 
   // 2. If global database URL is configured, sync to Google Sheets
@@ -120,7 +121,10 @@ function syncUserStatsToDatabase() {
     },
     body: JSON.stringify(payload)
   })
-  .then(() => console.log("[Sync] Global Database Sync Successful for:", activeUser.username))
+  .then(() => {
+    console.log("[Sync] Global Database Sync Successful for:", activeUser.username);
+    loadSidebarLeaderboardRank();
+  })
   .catch(err => console.error("[Sync Error] Failed to sync to global database:", err));
 }
 
@@ -246,6 +250,64 @@ function loadLocalLeaderboardData(renderCallback) {
 
   localList.sort((a, b) => b.xp - a.xp);
   renderCallback(localList);
+}
+
+function updateSidebarLeaderboardRank(users) {
+  const sidebarRankEl = document.getElementById('sidebar-leaderboard-rank');
+  const sidebarMetaEl = document.getElementById('sidebar-leaderboard-meta');
+  const sidebarBadgeEl = document.getElementById('sidebar-leaderboard-badge');
+  if (!sidebarRankEl || !activeUser) return;
+
+  const userIdx = users.findIndex(u => u.username.toLowerCase() === activeUser.username.toLowerCase());
+  
+  if (userIdx > -1) {
+    const rank = userIdx + 1;
+    sidebarRankEl.textContent = `Rank #${rank}`;
+    sidebarMetaEl.textContent = `Out of ${users.length} developers`;
+
+    if (rank === 1) {
+      sidebarBadgeEl.textContent = "🥇";
+      sidebarBadgeEl.style.background = "rgba(251, 191, 36, 0.1)";
+      sidebarBadgeEl.style.borderColor = "rgba(251, 191, 36, 0.3)";
+    } else if (rank === 2) {
+      sidebarBadgeEl.textContent = "🥈";
+      sidebarBadgeEl.style.background = "rgba(156, 163, 175, 0.1)";
+      sidebarBadgeEl.style.borderColor = "rgba(156, 163, 175, 0.3)";
+    } else if (rank === 3) {
+      sidebarBadgeEl.textContent = "🥉";
+      sidebarBadgeEl.style.background = "rgba(180, 83, 9, 0.1)";
+      sidebarBadgeEl.style.borderColor = "rgba(180, 83, 9, 0.3)";
+    } else {
+      sidebarBadgeEl.textContent = "🏆";
+      sidebarBadgeEl.style.background = "rgba(255, 255, 255, 0.04)";
+      sidebarBadgeEl.style.borderColor = "rgba(255, 255, 255, 0.08)";
+    }
+  } else {
+    sidebarRankEl.textContent = "Rank #--";
+    sidebarMetaEl.textContent = "Complete tasks to sync rank";
+    sidebarBadgeEl.textContent = "🏆";
+    sidebarBadgeEl.style.background = "rgba(255, 255, 255, 0.04)";
+    sidebarBadgeEl.style.borderColor = "rgba(255, 255, 255, 0.08)";
+  }
+}
+
+function loadSidebarLeaderboardRank() {
+  const handleRankLoad = (users) => {
+    updateSidebarLeaderboardRank(users);
+  };
+
+  if (LEADERBOARD_DB_URL) {
+    fetch(LEADERBOARD_DB_URL)
+    .then(res => res.json())
+    .then(users => {
+      handleRankLoad(users);
+    })
+    .catch(() => {
+      loadLocalLeaderboardData(handleRankLoad);
+    });
+  } else {
+    loadLocalLeaderboardData(handleRankLoad);
+  }
 }
 
 // Default progress object for a new user
@@ -425,6 +487,9 @@ function loadUserDashboard() {
 
   // Sync SDE stats to the central database immediately on dashboard load
   syncUserStatsToDatabase();
+
+  // Load sidebar leaderboard rank display
+  loadSidebarLeaderboardRank();
 }
 
 // Check if a new calendar day has started, reset daily metrics but save streaks

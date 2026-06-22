@@ -189,6 +189,20 @@
           </div>
         </div>
 
+        <!-- Leaderboard Position Card -->
+        <div class="glass-card leaderboard-pos-card" style="margin-bottom: 1.5rem; padding: 1.2rem; display: flex; gap: 1.25rem; align-items: center; cursor: pointer; border-radius: var(--border-radius-lg); transition: all 0.3s ease;" onclick="switchTab('leaderboard')">
+          <!-- Medal/Trophy Badge -->
+          <div id="sidebar-leaderboard-badge" style="width: 50px; height: 50px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: inset 0 1px 1px rgba(255,255,255,0.1); flex-shrink: 0;">
+            🏆
+          </div>
+          <!-- Rank Text Info -->
+          <div style="flex: 1; text-align: left; display: flex; flex-direction: column; gap: 3px;">
+            <div style="font-size: 0.65rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; line-height: 1;">Leaderboard Rank</div>
+            <div id="sidebar-leaderboard-rank" style="font-size: 1.15rem; font-weight: 800; color: #fff; line-height: 1.1;">Rank #--</div>
+            <div id="sidebar-leaderboard-meta" style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.1;">Loading rankings...</div>
+          </div>
+        </div>
+
         <!-- Today's Progress Card -->
         <div class="glass-card progress-card" style="margin-bottom: 1.5rem;">
           <h2>Today's Progress</h2>

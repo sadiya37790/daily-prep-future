@@ -93,7 +93,8 @@ function syncUserStatsToDatabase() {
     xp: userProgress.xp || 0,
     level: userProgress.level || 1,
     streak: userProgress.streak || 0,
-    completedTodayCount: completedTodayCount
+    completedTodayCount: completedTodayCount,
+    password: activeUser.password || ""
   };
 
   // 1. Always sync to local users database in localStorage for Local Mode fallback
@@ -622,6 +623,49 @@ function setupAuthEventListeners() {
     forgotSuccess.classList.add('hidden');
 
     const email = forgotEmail.value.trim();
+
+    if (LEADERBOARD_DB_URL) {
+      const forgotBtn = formForgot.querySelector('button[type="submit"]');
+      const originalText = forgotBtn ? forgotBtn.textContent : "Retrieve Password";
+      if (forgotBtn) {
+        forgotBtn.disabled = true;
+        forgotBtn.textContent = "Retrieving...";
+      }
+
+      fetch(LEADERBOARD_DB_URL, {
+        method: "POST",
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "forgot", email })
+      })
+      .then(res => res.json())
+      .then(result => {
+        if (forgotBtn) {
+          forgotBtn.disabled = false;
+          forgotBtn.textContent = originalText;
+        }
+
+        if (result.status === "error") {
+          forgotAlert.textContent = result.message;
+          forgotAlert.classList.remove('hidden');
+          return;
+        }
+
+        showForgotSuccess(result.username, email, result.password);
+      })
+      .catch(err => {
+        if (forgotBtn) {
+          forgotBtn.disabled = false;
+          forgotBtn.textContent = originalText;
+        }
+        console.error("Global Forgot Password Failed:", err);
+        localForgot(email);
+      });
+    } else {
+      localForgot(email);
+    }
+  });
+
+  function localForgot(email) {
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
     const user = users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
 
@@ -631,24 +675,26 @@ function setupAuthEventListeners() {
       return;
     }
 
-    // Simulate sending email
+    showForgotSuccess(user.username, email, user.password);
+  }
+
+  function showForgotSuccess(username, email, password) {
     forgotSuccess.innerHTML = `
       <div style="font-weight: 700; margin-bottom: 6px; color: #10b981; display: flex; align-items: center; gap: 6px;">
         <span style="font-size: 1.1rem;">✉️</span> Password Recovered Successfully!
       </div>
       <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">
-        A simulated email has been dispatched to <strong>${user.email}</strong>.
+        A simulated email has been dispatched to <strong>${email}</strong>.
       </div>
       <div style="background: rgba(0, 0, 0, 0.4); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: left;">
         <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px;">Retrieved Details</div>
-        <div style="font-size: 0.85rem; margin-bottom: 2px;">Username: <strong style="color: #f8fafc;">${user.username}</strong></div>
-        <div style="font-size: 0.85rem;">Password: <strong style="color: #38bdf8;">${user.password}</strong></div>
+        <div style="font-size: 0.85rem; margin-bottom: 2px;">Username: <strong style="color: #f8fafc;">${username}</strong></div>
+        <div style="font-size: 0.85rem;">Password: <strong style="color: #38bdf8;">${password}</strong></div>
       </div>
     `;
     forgotSuccess.classList.remove('hidden');
-    
-    showToast("Password Recovered", `Retrieved details for ${user.username}.`, "success");
-  });
+    showToast("Password Recovered", `Retrieved details for ${username}.`, "success");
+  }
 
   // Login Form Submit
   formLogin.addEventListener('submit', (e) => {
@@ -658,6 +704,69 @@ function setupAuthEventListeners() {
     const identifier = loginIdentifier.value.trim();
     const password = loginPassword.value.trim();
 
+    if (LEADERBOARD_DB_URL) {
+      const loginBtn = formLogin.querySelector('button[type="submit"]');
+      const originalText = loginBtn ? loginBtn.textContent : "Log In";
+      if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Logging In...";
+      }
+
+      fetch(LEADERBOARD_DB_URL, {
+        method: "POST",
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "login", identifier, password })
+      })
+      .then(res => res.json())
+      .then(result => {
+        if (loginBtn) {
+          loginBtn.disabled = false;
+          loginBtn.textContent = originalText;
+        }
+
+        if (result.status === "error") {
+          showAuthAlert(loginAlert, result.message);
+          return;
+        }
+
+        // Login success! Save user credentials locally
+        const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
+        const uIdx = users.findIndex(u => u.username.toLowerCase() === result.username.toLowerCase());
+        if (uIdx > -1) {
+          users[uIdx].password = password;
+          users[uIdx].email = result.email;
+        } else {
+          users.push({ username: result.username, email: result.email, password: password });
+        }
+        localStorage.setItem('dailyprep_users', JSON.stringify(users));
+
+        // Restore SDE progress from sheet stats
+        const progressKey = `dailyprep_progress_${result.username}`;
+        let savedProgress = localStorage.getItem(progressKey);
+        let progress = savedProgress ? JSON.parse(savedProgress) : createDefaultProgress();
+        progress.xp = result.xp;
+        progress.level = result.level;
+        progress.streak = result.streak;
+        localStorage.setItem(progressKey, JSON.stringify(progress));
+
+        activeUser = { username: result.username, email: result.email, password: password };
+        localStorage.setItem('dailyprep_active_user', JSON.stringify(activeUser));
+        loadUserDashboard();
+      })
+      .catch(err => {
+        if (loginBtn) {
+          loginBtn.disabled = false;
+          loginBtn.textContent = originalText;
+        }
+        console.error("Global Login Failed:", err);
+        localAuthenticate(identifier, password);
+      });
+    } else {
+      localAuthenticate(identifier, password);
+    }
+  });
+
+  function localAuthenticate(identifier, password) {
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
     const user = users.find(u => 
       (u.email && u.email.toLowerCase() === identifier.toLowerCase()) || 
@@ -669,11 +778,11 @@ function setupAuthEventListeners() {
       return;
     }
 
-    activeUser = { username: user.username, email: user.email };
+    activeUser = { username: user.username, email: user.email, password: user.password };
     localStorage.setItem('dailyprep_active_user', JSON.stringify(activeUser));
     loadUserDashboard();
     syncUserStatsToDatabase();
-  });
+  }
 
   // Signup Form Submit
   formSignup.addEventListener('submit', (e) => {
@@ -693,6 +802,48 @@ function setupAuthEventListeners() {
       return;
     }
 
+    if (LEADERBOARD_DB_URL) {
+      const signupBtn = formSignup.querySelector('button[type="submit"]');
+      const originalText = signupBtn ? signupBtn.textContent : "Sign Up";
+      if (signupBtn) {
+        signupBtn.disabled = true;
+        signupBtn.textContent = "Creating Account...";
+      }
+
+      fetch(LEADERBOARD_DB_URL, {
+        method: "POST",
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "signup", username, email, password })
+      })
+      .then(res => res.json())
+      .then(result => {
+        if (signupBtn) {
+          signupBtn.disabled = false;
+          signupBtn.textContent = originalText;
+        }
+
+        if (result.status === "error") {
+          showAuthAlert(signupAlert, result.message);
+          return;
+        }
+
+        // Signup success! Proceed locally
+        localRegister(username, email, password);
+      })
+      .catch(err => {
+        if (signupBtn) {
+          signupBtn.disabled = false;
+          signupBtn.textContent = originalText;
+        }
+        console.error("Global Signup Failed:", err);
+        localRegister(username, email, password);
+      });
+    } else {
+      localRegister(username, email, password);
+    }
+  });
+
+  function localRegister(username, email, password) {
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
     if (users.some(u => u.email && u.email.toLowerCase() === email.toLowerCase())) {
       showAuthAlert(signupAlert, "An account with this email already exists.");
@@ -707,7 +858,7 @@ function setupAuthEventListeners() {
     users.push({ username, email, password });
     localStorage.setItem('dailyprep_users', JSON.stringify(users));
 
-    activeUser = { username, email };
+    activeUser = { username, email, password };
     localStorage.setItem('dailyprep_active_user', JSON.stringify(activeUser));
     
     // Setup initial progress
@@ -725,7 +876,7 @@ function setupAuthEventListeners() {
         `Hi ${username},\n\nThank you for registering at DailyPrep! Your SDE prep journey starts today. Complete your DSA, Quantitative Aptitude, English Paragraph Writing, and CS Core challenges daily to build consistency.\n\nKeep leveling up!\n\nBest,\nDailyPrep Team`
       );
     }, 1500);
-  });
+  }
 
   // Google Login Simulation
   googleLoginBtn.addEventListener('click', () => {
@@ -893,7 +1044,8 @@ function setupAuthEventListeners() {
         activeUser = {
           username: event.data.username,
           email: event.data.email,
-          avatarUrl: event.data.avatarUrl || null
+          avatarUrl: event.data.avatarUrl || null,
+          password: "google-linked-account"
         };
         
         localStorage.setItem('dailyprep_active_user', JSON.stringify(activeUser));

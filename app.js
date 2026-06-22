@@ -508,6 +508,15 @@ function checkDailyReset() {
     if (!completedYesterday && lastActive !== yesterdayStr) {
       // Streak broken
       userProgress.streak = 0;
+      
+      // Send missed task email notification exactly once when streak resets
+      if (activeUser && activeUser.email) {
+        sendEmailNotification(
+          activeUser.email,
+          "DailyPrep Streak Alert: You Missed Yesterday's Tasks!",
+          `Hi ${activeUser.username},\n\nYou missed yesterday's SDE prep challenges, so your consistency streak has been reset.\n\nDon't lose your momentum! Log in today to start a new streak and keep preparing.\n\nAccess dashboard: https://daily-prep-future.vercel.app/\n\nHappy Coding!\nDailyPrep Team`
+        );
+      }
     }
 
     // Reset daily tasks
@@ -1058,18 +1067,6 @@ function updateOverallProgress() {
           <span style="font-weight: 700; color: #fff;">Unfinished daily tasks!</span> You have <strong>${remaining} pending module(s)</strong>. Complete all to protect your <strong>${userProgress.streak} day streak</strong>!
         </div>
       `;
-
-      // Trigger email notification once per login session
-      if (activeUser && !emailReminderSentToday) {
-        emailReminderSentToday = true;
-        setTimeout(() => {
-          sendEmailNotification(
-            activeUser.email,
-            "DailyPrep: Remaining Tasks for Today",
-            `Hi ${activeUser.username},\n\nThis is a quick reminder that you have ${remaining} pending SDE prep module(s) today. Complete them before midnight to protect your consistency streak!\n\nAccess dashboard: https://daily-prep-future.vercel.app/\n\nKeep pushing,\nDailyPrep Team`
-          );
-        }, 1200);
-      }
     } else {
       banner.className = "status-banner completed";
       banner.innerHTML = `

@@ -2689,6 +2689,14 @@ function setupSettingsModal() {
 
     // Save username details if changed
     if (newUsername !== oldUsername) {
+      // 1. Update registered users list
+      const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
+      const userIdx = users.findIndex(u => u.username.toLowerCase() === oldUsername.toLowerCase());
+      if (userIdx > -1) {
+        users[userIdx].username = newUsername;
+        localStorage.setItem('dailyprep_users', JSON.stringify(users));
+      }
+
       activeUser.username = newUsername;
       localStorage.setItem('dailyprep_active_user', JSON.stringify(activeUser));
 

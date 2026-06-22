@@ -623,7 +623,7 @@ function setupAuthEventListeners() {
 
     const email = forgotEmail.value.trim();
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const user = users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
       forgotAlert.textContent = "No account found with this email address.";
@@ -656,15 +656,15 @@ function setupAuthEventListeners() {
     loginAlert.classList.add('hidden');
 
     const identifier = loginIdentifier.value.trim();
-    const password = loginPassword.value;
+    const password = loginPassword.value.trim();
 
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
     const user = users.find(u => 
-      u.email.toLowerCase() === identifier.toLowerCase() || 
-      u.username.toLowerCase() === identifier.toLowerCase()
+      (u.email && u.email.toLowerCase() === identifier.toLowerCase()) || 
+      (u.username && u.username.toLowerCase() === identifier.toLowerCase())
     );
 
-    if (!user || user.password !== password) {
+    if (!user || user.password.trim() !== password) {
       showAuthAlert(loginAlert, "Invalid email, username, or password.");
       return;
     }
@@ -682,7 +682,7 @@ function setupAuthEventListeners() {
 
     const username = signupUsername.value.trim();
     const email = signupEmail.value.trim();
-    const password = signupPassword.value;
+    const password = signupPassword.value.trim();
 
     if (username.length < 3) {
       showAuthAlert(signupAlert, "Username must be at least 3 characters.");
@@ -694,11 +694,11 @@ function setupAuthEventListeners() {
     }
 
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
-    if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+    if (users.some(u => u.email && u.email.toLowerCase() === email.toLowerCase())) {
       showAuthAlert(signupAlert, "An account with this email already exists.");
       return;
     }
-    if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+    if (users.some(u => u.username && u.username.toLowerCase() === username.toLowerCase())) {
       showAuthAlert(signupAlert, "Username is already taken.");
       return;
     }

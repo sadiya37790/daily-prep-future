@@ -1,7 +1,7 @@
 // --- CONFIGURATION ---
 // Paste your Google Apps Script Web App URL here to enable central global leaderboard & user storage.
 // If empty, the application will fallback to Local Mode (offline database stored in browser localStorage).
-const LEADERBOARD_DB_URL = "https://script.google.com/macros/s/AKfycbyHam-Ozi0mU8F8dJqYDccyLbsFMR3qfnU_HlK6ndfQmGu7tLHJeisbCiOHGZd40zfTyQ/exec";
+const LEADERBOARD_DB_URL = "https://script.google.com/macros/s/AKfycbz8uQlLUghtZPMM77DrdYp0-LyYeX1GekT_2BcM6SCS36lGaiKVw4gjypCRtH9LvyM5qA/exec";
 
 const { dsaDatabase, verifyLeetCodeSubmission } = window;
 const { aptitudeDatabase } = window;

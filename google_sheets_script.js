@@ -65,12 +65,12 @@ function doPost(e) {
       
       var exists = false;
       for (var i = 1; i < rows.length; i++) {
-        if (rows[i][0] && rows[i][0].toString().toLowerCase() === username.toLowerCase()) {
+        if (rows[i][0] && rows[i][0].toString().trim().toLowerCase() === username.toLowerCase()) {
           exists = true;
           response = { status: "error", message: "Username is already taken." };
           break;
         }
-        if (rows[i][1] && rows[i][1].toString().toLowerCase() === email.toLowerCase()) {
+        if (rows[i][1] && rows[i][1].toString().trim().toLowerCase() === email.toLowerCase()) {
           exists = true;
           response = { status: "error", message: "An account with this email already exists." };
           break;
@@ -94,7 +94,7 @@ function doPost(e) {
         var rowEmail = rows[i][1] ? rows[i][1].toString() : "";
         var rowPassword = rows[i][2] ? rows[i][2].toString() : "";
         
-        if (rowUsername.toLowerCase() === identifier.toLowerCase() || rowEmail.toLowerCase() === identifier.toLowerCase()) {
+        if (rowUsername.trim().toLowerCase() === identifier.toLowerCase() || rowEmail.trim().toLowerCase() === identifier.toLowerCase()) {
           found = true;
           
           // Legacy Account Migration: If password cell is empty/blank in the sheet, claim/save the typed password
@@ -135,7 +135,7 @@ function doPost(e) {
         var rowEmail = rows[i][1] ? rows[i][1].toString() : "";
         var rowPassword = rows[i][2] ? rows[i][2].toString() : "";
         
-        if (rowEmail.toLowerCase() === email.toLowerCase()) {
+        if (rowEmail.trim().toLowerCase() === email.toLowerCase()) {
           found = true;
           response = {
             status: "success",
@@ -162,7 +162,7 @@ function doPost(e) {
         var rowUsername = rows[i][0] ? rows[i][0].toString() : "";
         var rowEmail = rows[i][1] ? rows[i][1].toString() : "";
         
-        if (rowEmail.toLowerCase() === email.toLowerCase()) {
+        if (rowEmail.trim().toLowerCase() === email.toLowerCase()) {
           found = true;
           // Update the Password cell in the sheet (Column 3, which is Column C)
           sheet.getRange(i + 1, 3).setValue(newPassword);
@@ -195,7 +195,7 @@ function doPost(e) {
         var rowUsername = rows[i][0] ? rows[i][0].toString() : "";
         var rowEmail = rows[i][1] ? rows[i][1].toString() : "";
         
-        if (rowUsername.toLowerCase() === username.toLowerCase() || (email && rowEmail.toLowerCase() === email.toLowerCase())) {
+        if (rowUsername.trim().toLowerCase() === username.trim().toLowerCase() || (email && rowEmail.trim().toLowerCase() === email.trim().toLowerCase())) {
           found = true;
           var rowIndex = i + 1;
           sheet.getRange(rowIndex, 1).setValue(username);

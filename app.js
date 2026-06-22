@@ -730,7 +730,7 @@ function setupAuthEventListeners() {
 
   function localVerifyEmail(email) {
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
-    const user = users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
+    const user = users.find(u => u.email && u.email.trim().toLowerCase() === email.toLowerCase());
     
     if (!user) {
       forgotAlert.textContent = "No account found with this email address.";
@@ -904,8 +904,8 @@ function setupAuthEventListeners() {
   function localAuthenticate(identifier, password) {
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
     const user = users.find(u => 
-      (u.email && u.email.toLowerCase() === identifier.toLowerCase()) || 
-      (u.username && u.username.toLowerCase() === identifier.toLowerCase())
+      (u.email && u.email.trim().toLowerCase() === identifier.toLowerCase()) || 
+      (u.username && u.username.trim().toLowerCase() === identifier.toLowerCase())
     );
 
     if (!user || user.password.trim() !== password) {
@@ -980,11 +980,11 @@ function setupAuthEventListeners() {
 
   function localRegister(username, email, password) {
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
-    if (users.some(u => u.email && u.email.toLowerCase() === email.toLowerCase())) {
+    if (users.some(u => u.email && u.email.trim().toLowerCase() === email.toLowerCase())) {
       showAuthAlert(signupAlert, "An account with this email already exists.");
       return;
     }
-    if (users.some(u => u.username && u.username.toLowerCase() === username.toLowerCase())) {
+    if (users.some(u => u.username && u.username.trim().toLowerCase() === username.toLowerCase())) {
       showAuthAlert(signupAlert, "Username is already taken.");
       return;
     }
@@ -1421,6 +1421,47 @@ function getCompanyBadgeHtml(companyName) {
   return `<span class="company-badge" style="background: ${style.bg}; border: 1px solid ${style.border}; color: ${style.text}; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; transition: var(--transition-smooth); cursor: default;">${companyName}</span>`;
 }
 
+function checkAndMarkDsaCompleted() {
+  const topicKeys = [
+    "arrays", "strings", "linked-lists", "stacks-queues", 
+    "trees", "graphs", "dynamic-programming", 
+    "heaps-priority-queues", "binary-search", "backtracking"
+  ];
+  const allQuestions = [];
+  topicKeys.forEach((tKey) => {
+    if (!userProgress.dsaSolved[tKey]) {
+      userProgress.dsaSolved[tKey] = [false, false, false];
+    }
+    const topicIdx = dsaTopicMapping[tKey];
+    const topicData = dsaDatabase[topicIdx];
+    if (topicData) {
+      topicData.questions.forEach((q, idx) => {
+        allQuestions.push({
+          ...q,
+          topicKey: tKey,
+          questionIdx: idx
+        });
+      });
+    }
+  });
+
+  const totalQs = allQuestions.length;
+  if (totalQs === 0) return;
+
+  const daySeed = getDayOfYear();
+  let solvedCount = 0;
+  for (let i = 0; i < 3; i++) {
+    const qIdx = (daySeed * 3 + i) % totalQs;
+    const q = allQuestions[qIdx];
+    const isSolved = userProgress.dsaSolved[q.topicKey] && userProgress.dsaSolved[q.topicKey][q.questionIdx];
+    if (isSolved) solvedCount++;
+  }
+
+  if (solvedCount === 3) {
+    markModuleCompleted('dsa');
+  }
+}
+
 function renderDSAPanel() {
   const usernameInput = document.getElementById('leetcode-username');
   const saveBtn = document.getElementById('save-leetcode-username');
@@ -1620,7 +1661,7 @@ function renderDSAPanel() {
       const idx = parseInt(btn.getAttribute('data-index'));
       
       userProgress.dsaSolved[topic][idx] = true;
-      markModuleCompleted('dsa');
+      checkAndMarkDsaCompleted();
       saveProgressToStorage();
       
       const topicData = dsaDatabase[dsaTopicMapping[topic]];
@@ -1681,7 +1722,7 @@ function renderDSAPanel() {
 
       if (result.success) {
         userProgress.dsaSolved[topic][idx] = true;
-        markModuleCompleted('dsa');
+        checkAndMarkDsaCompleted();
         saveProgressToStorage();
         
         renderDSAPanel();

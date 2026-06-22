@@ -165,6 +165,12 @@
                 </svg>
                 <span>CS Core & SQL</span>
               </button>
+              <button id="tab-module-leaderboard" class="module-tab-btn" data-module="leaderboard">
+                <svg viewBox="0 0 24 24" class="nav-icon" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                </svg>
+                <span>Leaderboard</span>
+              </button>
             </nav>
           </div>
         </div>
@@ -539,6 +545,37 @@
               </div>
             </div>
 
+          </div>
+        </div>
+
+        <!-- MODULE CONTENT 5: LEADERBOARD -->
+        <div id="panel-leaderboard" class="glass-card module-panel hidden" style="padding: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="margin: 0; font-size: 1.5rem; color: #fff; font-family: 'Space Grotesk', sans-serif;">🏆 Prep Leaderboard</h2>
+              <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">Rankings of all developers preparing for placements</p>
+            </div>
+            <div id="leaderboard-sync-status" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">
+              Local Mode (Offline)
+            </div>
+          </div>
+
+          <div class="leaderboard-table-container" style="overflow-x: auto; background: rgba(0,0,0,0.2); border-radius: var(--border-radius-sm); border: 1px solid rgba(255,255,255,0.05); width: 100%;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; min-width: 600px;">
+              <thead>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: var(--text-secondary); font-weight: 700;">
+                  <th style="padding: 12px 16px; width: 80px;">Rank</th>
+                  <th style="padding: 12px 16px;">Developer</th>
+                  <th style="padding: 12px 16px; width: 100px;">Level</th>
+                  <th style="padding: 12px 16px; width: 120px; text-align: right;">XP Points</th>
+                  <th style="padding: 12px 16px; width: 100px; text-align: right;">Streak</th>
+                  <th style="padding: 12px 16px; width: 140px; text-align: center;">Daily Quest</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-list">
+                <!-- Leaderboard rows will render here -->
+              </tbody>
+            </table>
           </div>
         </div>
 

@@ -1,3 +1,8 @@
+// --- CONFIGURATION ---
+// Paste your Google Apps Script Web App URL here to enable central global leaderboard & user storage.
+// If empty, the application will fallback to Local Mode (offline database stored in browser localStorage).
+const LEADERBOARD_DB_URL = "";
+
 const { dsaDatabase, verifyLeetCodeSubmission } = window;
 const { aptitudeDatabase } = window;
 const { dailyPrompts, analyzeParagraph } = window;
@@ -76,6 +81,170 @@ function sendEmailNotification(toEmail, subject, body) {
   });
 }
 
+// --- CENTRAL USER DATA SYNC & LEADERBOARD SYSTEM ---
+function syncUserStatsToDatabase() {
+  if (!activeUser || !userProgress) return;
+
+  const completedTodayCount = Object.values(userProgress.todayCompletion || {}).filter(Boolean).length;
+  
+  const payload = {
+    username: activeUser.username,
+    email: activeUser.email || "",
+    xp: userProgress.xp || 0,
+    level: userProgress.level || 1,
+    streak: userProgress.streak || 0,
+    completedTodayCount: completedTodayCount
+  };
+
+  // 1. Always sync to local users database in localStorage for Local Mode fallback
+  const localUsers = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
+  const userIdx = localUsers.findIndex(u => u.username.toLowerCase() === activeUser.username.toLowerCase());
+  if (userIdx > -1) {
+    localUsers[userIdx].xp = payload.xp;
+    localUsers[userIdx].level = payload.level;
+    localUsers[userIdx].streak = payload.streak;
+    localUsers[userIdx].completedTodayCount = payload.completedTodayCount;
+    localStorage.setItem('dailyprep_users', JSON.stringify(localUsers));
+  }
+
+  // 2. If global database URL is configured, sync to Google Sheets
+  if (!LEADERBOARD_DB_URL) {
+    console.log("[Sync] Local Sync Complete. Set LEADERBOARD_DB_URL to sync globally.");
+    return;
+  }
+
+  fetch(LEADERBOARD_DB_URL, {
+    method: "POST",
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(() => console.log("[Sync] Global Database Sync Successful for:", activeUser.username))
+  .catch(err => console.error("[Sync Error] Failed to sync to global database:", err));
+}
+
+function loadLeaderboardData() {
+  const statusEl = document.getElementById('leaderboard-sync-status');
+  const listEl = document.getElementById('leaderboard-list');
+  if (!listEl) return;
+
+  listEl.innerHTML = `
+    <tr>
+      <td colspan="6" style="padding: 24px; text-align: center; color: var(--text-secondary);">
+        <span class="spinner" style="display:inline-block; margin-right:8px; vertical-align:middle;"></span> Loading leaderboard rankings...
+      </td>
+    </tr>
+  `;
+
+  const renderLeaderboardRows = (users) => {
+    listEl.innerHTML = "";
+    if (users.length === 0) {
+      listEl.innerHTML = `
+        <tr>
+          <td colspan="6" style="padding: 24px; text-align: center; color: var(--text-muted);">
+            No users found in the leaderboard database.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    users.forEach((user, idx) => {
+      const rank = idx + 1;
+      let rankBadge = `${rank}`;
+      if (rank === 1) rankBadge = '🥇';
+      else if (rank === 2) rankBadge = '🥈';
+      else if (rank === 3) rankBadge = '🥉';
+
+      const isSelf = activeUser && user.username.toLowerCase() === activeUser.username.toLowerCase();
+      const rowStyle = isSelf ? 'background: rgba(16, 185, 129, 0.05); border-left: 3px solid var(--accent-primary);' : 'border-bottom: 1px solid rgba(255,255,255,0.03);';
+      const nameHighlight = isSelf ? 'color: var(--accent-primary); font-weight: 800;' : 'color: #fff; font-weight: 600;';
+
+      const questCount = user.completedTodayCount !== undefined ? user.completedTodayCount : 0;
+      let questHtml = "";
+      for (let q = 1; q <= 4; q++) {
+        if (q <= questCount) {
+          questHtml += `<span style="color: var(--success); margin: 0 2px;">●</span>`;
+        } else {
+          questHtml += `<span style="color: rgba(255,255,255,0.1); margin: 0 2px;">○</span>`;
+        }
+      }
+
+      const tr = document.createElement('tr');
+      tr.style.cssText = rowStyle;
+      tr.innerHTML = `
+        <td style="padding: 14px 16px; font-weight: 700; font-size: 1.1rem; color: ${rank <= 3 ? 'inherit' : 'var(--text-muted)'};">${rankBadge}</td>
+        <td style="padding: 14px 16px; ${nameHighlight}">${user.username} ${isSelf ? ' <span style="font-size:0.7rem; background:var(--accent-primary); color:#000; padding:1px 6px; border-radius:10px; font-weight:800; margin-left:4px; vertical-align:middle;">YOU</span>' : ''}</td>
+        <td style="padding: 14px 16px; color: var(--accent-secondary); font-weight: 600; font-family: monospace;">Lvl ${user.level || 1}</td>
+        <td style="padding: 14px 16px; text-align: right; font-weight: 700; font-family: monospace; color: #fff;">${(user.xp || 0).toLocaleString()}</td>
+        <td style="padding: 14px 16px; text-align: right; font-weight: 700; color: #f43f5e; font-family: monospace;">${user.streak || 0} 🔥</td>
+        <td style="padding: 14px 16px; text-align: center; font-size: 1rem;">${questHtml}</td>
+      `;
+      listEl.appendChild(tr);
+    });
+  };
+
+  if (LEADERBOARD_DB_URL) {
+    if (statusEl) {
+      statusEl.textContent = "Global Mode (Live Syncing)";
+      statusEl.style.color = "var(--success)";
+    }
+
+    fetch(LEADERBOARD_DB_URL)
+    .then(res => res.json())
+    .then(users => {
+      renderLeaderboardRows(users);
+    })
+    .catch(err => {
+      console.error("[Leaderboard Load Error] Falling back to Local Mode:", err);
+      if (statusEl) {
+        statusEl.textContent = "Global Mode Connection Failed (Fallback to Offline)";
+        statusEl.style.color = "var(--warning)";
+      }
+      loadLocalLeaderboardData(renderLeaderboardRows);
+    });
+  } else {
+    if (statusEl) {
+      statusEl.textContent = "Local Mode (Offline)";
+      statusEl.style.color = "var(--text-muted)";
+    }
+    loadLocalLeaderboardData(renderLeaderboardRows);
+  }
+}
+
+function loadLocalLeaderboardData(renderCallback) {
+  const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
+  const localList = [];
+
+  users.forEach(u => {
+    const savedProgress = localStorage.getItem(`dailyprep_progress_${u.username}`);
+    let xp = u.xp || 0;
+    let level = u.level || 1;
+    let streak = u.streak || 0;
+    let completedTodayCount = u.completedTodayCount || 0;
+
+    if (savedProgress) {
+      const progress = JSON.parse(savedProgress);
+      xp = progress.xp || 0;
+      level = progress.level || 1;
+      streak = progress.streak || 0;
+      completedTodayCount = Object.values(progress.todayCompletion || {}).filter(Boolean).length;
+    }
+
+    localList.push({
+      username: u.username,
+      xp: xp,
+      level: level,
+      streak: streak,
+      completedTodayCount: completedTodayCount
+    });
+  });
+
+  localList.sort((a, b) => b.xp - a.xp);
+  renderCallback(localList);
+}
+
 // Default progress object for a new user
 const createDefaultProgress = () => ({
   streak: 0,
@@ -143,7 +312,8 @@ const tabs = {
   dsa: document.getElementById('tab-module-dsa'),
   aptitude: document.getElementById('tab-module-aptitude'),
   writing: document.getElementById('tab-module-writing'),
-  theory: document.getElementById('tab-module-theory')
+  theory: document.getElementById('tab-module-theory'),
+  leaderboard: document.getElementById('tab-module-leaderboard')
 };
 
 // Panel Elements
@@ -151,7 +321,8 @@ const panels = {
   dsa: document.getElementById('panel-dsa'),
   aptitude: document.getElementById('panel-aptitude'),
   writing: document.getElementById('panel-writing'),
-  theory: document.getElementById('panel-theory')
+  theory: document.getElementById('panel-theory'),
+  leaderboard: document.getElementById('panel-leaderboard')
 };
 
 // --- INITIALIZATION ---
@@ -286,6 +457,7 @@ function checkDailyReset() {
     
     saveProgressToStorage();
     updateGamifiedDashboard();
+    syncUserStatsToDatabase();
   }
 }
 
@@ -467,6 +639,7 @@ function setupAuthEventListeners() {
     activeUser = { username: user.username, email: user.email };
     localStorage.setItem('dailyprep_active_user', JSON.stringify(activeUser));
     loadUserDashboard();
+    syncUserStatsToDatabase();
   });
 
   // Signup Form Submit
@@ -509,6 +682,7 @@ function setupAuthEventListeners() {
     saveProgressToStorage();
 
     loadUserDashboard();
+    syncUserStatsToDatabase();
 
     // Trigger welcome email notification
     setTimeout(() => {
@@ -701,6 +875,7 @@ function setupAuthEventListeners() {
         }
         
         loadUserDashboard();
+        syncUserStatsToDatabase();
 
         if (isFirstLogin) {
           setTimeout(() => {
@@ -772,6 +947,7 @@ function switchTab(tabKey) {
   if (tabKey === 'aptitude') renderAptitudePanel();
   if (tabKey === 'writing') renderWritingPanel();
   if (tabKey === 'theory') renderTheoryPanel();
+  if (tabKey === 'leaderboard') loadLeaderboardData();
 }
 
 // --- CORE METRIC UPDATE ---
@@ -869,6 +1045,8 @@ function markModuleCompleted(moduleKey) {
   
   // Re-render DSA panel to show tomorrow's preview if all completed
   renderDSAPanel();
+
+  syncUserStatsToDatabase();
 }
 
 // --- HEATMAP GENERATION ---
@@ -2264,6 +2442,8 @@ function gainXp(amount, reason) {
       showToast("🎉 Level Up!", `Congratulations! You are now Level ${newLevel}: ${rankName}`, "success");
     }, 1200);
   }
+  
+  syncUserStatsToDatabase();
 }
 
 function updateGamifiedDashboard() {

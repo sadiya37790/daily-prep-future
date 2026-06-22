@@ -360,6 +360,15 @@ const backToLoginLink = document.getElementById('back-to-login-link');
 const forgotEmail = document.getElementById('forgot-email');
 const forgotAlert = document.getElementById('forgot-alert');
 const forgotSuccess = document.getElementById('forgot-success');
+const btnVerifyEmail = document.getElementById('btn-verify-email');
+const btnUpdatePassword = document.getElementById('btn-update-password');
+const resetPasswordInput = document.getElementById('reset-password');
+const toggleResetPassword = document.getElementById('toggle-reset-password');
+const forgotStepEmail = document.getElementById('forgot-step-email');
+const forgotStepReset = document.getElementById('forgot-step-reset');
+const forgotInstructions = document.getElementById('forgot-instructions');
+let verifiedResetEmail = "";
+let verifiedResetUsername = "";
 
 // Dashboard Header Elements
 const displayUsername = document.getElementById('display-username');
@@ -594,6 +603,15 @@ function setupAuthEventListeners() {
     });
   }
 
+  const toggleResetPass = document.getElementById('toggle-reset-password');
+  if (toggleResetPass) {
+    toggleResetPass.addEventListener('click', () => {
+      const type = resetPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      resetPasswordInput.setAttribute('type', type);
+      toggleResetPass.textContent = type === 'password' ? '👁️' : '🙈';
+    });
+  }
+
   // Tab Switching
   tabLogin.addEventListener('click', () => {
     tabLogin.classList.add('active');
@@ -620,9 +638,19 @@ function setupAuthEventListeners() {
     formSignup.classList.add('hidden');
     formForgot.classList.remove('hidden');
     tabLogin.parentElement.classList.add('hidden'); // Hide the tab switching buttons
+    
+    // Reset to Step 1
+    forgotStepEmail.classList.remove('hidden');
+    forgotStepReset.classList.add('hidden');
+    forgotInstructions.textContent = "Enter your email to verify your SDE account.";
+    
     forgotAlert.classList.add('hidden');
     forgotSuccess.classList.add('hidden');
     forgotEmail.value = '';
+    resetPasswordInput.value = '';
+    
+    verifiedResetEmail = "";
+    verifiedResetUsername = "";
   });
 
   // Back to Login Link Click
@@ -635,22 +663,33 @@ function setupAuthEventListeners() {
     tabSignup.classList.remove('active');
   });
 
-  // Forgot Password Form Submit
+  // Prevent form reload and handle Enter key submit
   formForgot.addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!forgotStepEmail.classList.contains('hidden')) {
+      btnVerifyEmail.click();
+    } else if (!forgotStepReset.classList.contains('hidden')) {
+      btnUpdatePassword.click();
+    }
+  });
+
+  // Step 1: Verify Email click handler
+  btnVerifyEmail.addEventListener('click', () => {
     forgotAlert.classList.add('hidden');
     forgotSuccess.classList.add('hidden');
-
+    
     const email = forgotEmail.value.trim();
-
+    if (!email) {
+      forgotAlert.textContent = "Please enter your email address.";
+      forgotAlert.classList.remove('hidden');
+      return;
+    }
+    
+    const originalText = btnVerifyEmail.textContent;
+    btnVerifyEmail.disabled = true;
+    btnVerifyEmail.textContent = "Verifying...";
+    
     if (LEADERBOARD_DB_URL) {
-      const forgotBtn = formForgot.querySelector('button[type="submit"]');
-      const originalText = forgotBtn ? forgotBtn.textContent : "Retrieve Password";
-      if (forgotBtn) {
-        forgotBtn.disabled = true;
-        forgotBtn.textContent = "Retrieving...";
-      }
-
       fetch(LEADERBOARD_DB_URL, {
         method: "POST",
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -658,68 +697,136 @@ function setupAuthEventListeners() {
       })
       .then(res => res.json())
       .then(result => {
-        if (forgotBtn) {
-          forgotBtn.disabled = false;
-          forgotBtn.textContent = originalText;
-        }
-
+        btnVerifyEmail.disabled = false;
+        btnVerifyEmail.textContent = originalText;
+        
         if (result.status === "error") {
           forgotAlert.textContent = result.message;
           forgotAlert.classList.remove('hidden');
           return;
         }
-
-        showForgotSuccess(result.username, email, result.password);
+        
+        // Save verified details
+        verifiedResetEmail = result.email;
+        verifiedResetUsername = result.username;
+        
+        // Transition to Step 2
+        forgotStepEmail.classList.add('hidden');
+        forgotStepReset.classList.remove('hidden');
+        forgotInstructions.innerHTML = `Verify successful. Setting password for user <strong style="color: #38bdf8;">${result.username}</strong>`;
       })
       .catch(err => {
-        if (forgotBtn) {
-          forgotBtn.disabled = false;
-          forgotBtn.textContent = originalText;
-        }
-        console.error("Global Forgot Password Failed:", err);
-        localForgot(email);
+        btnVerifyEmail.disabled = false;
+        btnVerifyEmail.textContent = originalText;
+        console.error("Global Email Verification Failed:", err);
+        localVerifyEmail(email);
       });
     } else {
-      localForgot(email);
+      btnVerifyEmail.disabled = false;
+      btnVerifyEmail.textContent = originalText;
+      localVerifyEmail(email);
     }
   });
 
-  function localForgot(email) {
+  function localVerifyEmail(email) {
     const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
     const user = users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
-
+    
     if (!user) {
       forgotAlert.textContent = "No account found with this email address.";
       forgotAlert.classList.remove('hidden');
       return;
     }
-
-    showForgotSuccess(user.username, email, user.password);
+    
+    // Save verified details
+    verifiedResetEmail = user.email;
+    verifiedResetUsername = user.username;
+    
+    // Transition to Step 2
+    forgotStepEmail.classList.add('hidden');
+    forgotStepReset.classList.remove('hidden');
+    forgotInstructions.innerHTML = `Verify successful. Setting password for user <strong style="color: #38bdf8;">${user.username}</strong>`;
   }
 
-   function showForgotSuccess(username, email, password) {
-    forgotSuccess.innerHTML = `
-      <div style="font-weight: 700; margin-bottom: 6px; color: #10b981; display: flex; align-items: center; gap: 6px;">
-        <span style="font-size: 1.1rem;">✉️</span> Password Recovered Successfully!
-      </div>
-      <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">
-        An email notification has been dispatched to <strong>${email}</strong>.
-      </div>
-      <div style="background: rgba(0, 0, 0, 0.4); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: left;">
-        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px;">Retrieved Details</div>
-        <div style="font-size: 0.85rem; margin-bottom: 2px;">Username: <strong style="color: #f8fafc;">${username}</strong></div>
-        <div style="font-size: 0.85rem;">Password: <strong style="color: #38bdf8;">${password}</strong></div>
-      </div>
-    `;
-    forgotSuccess.classList.remove('hidden');
-    showToast("Password Recovered", `Retrieved details for ${username}.`, "success");
+  // Step 2: Update Password click handler
+  btnUpdatePassword.addEventListener('click', () => {
+    forgotAlert.classList.add('hidden');
+    forgotSuccess.classList.add('hidden');
+    
+    const newPassword = resetPasswordInput.value.trim();
+    if (newPassword.length < 6) {
+      forgotAlert.textContent = "Password must be at least 6 characters.";
+      forgotAlert.classList.remove('hidden');
+      return;
+    }
+    
+    const originalText = btnUpdatePassword.textContent;
+    btnUpdatePassword.disabled = true;
+    btnUpdatePassword.textContent = "Updating...";
+    
+    if (LEADERBOARD_DB_URL) {
+      fetch(LEADERBOARD_DB_URL, {
+        method: "POST",
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: "reset_password", email: verifiedResetEmail, password: newPassword })
+      })
+      .then(res => res.json())
+      .then(result => {
+        btnUpdatePassword.disabled = false;
+        btnUpdatePassword.textContent = originalText;
+        
+        if (result.status === "error") {
+          forgotAlert.textContent = result.message;
+          forgotAlert.classList.remove('hidden');
+          return;
+        }
+        
+        completePasswordReset(verifiedResetUsername, verifiedResetEmail, newPassword);
+      })
+      .catch(err => {
+        btnUpdatePassword.disabled = false;
+        btnUpdatePassword.textContent = originalText;
+        console.error("Global Password Reset Failed:", err);
+        localResetPassword(newPassword);
+      });
+    } else {
+      btnUpdatePassword.disabled = false;
+      btnUpdatePassword.textContent = originalText;
+      localResetPassword(newPassword);
+    }
+  });
 
-    // Send a real email notification using the user's active email configuration
+  function localResetPassword(newPassword) {
+    completePasswordReset(verifiedResetUsername, verifiedResetEmail, newPassword);
+  }
+
+  function completePasswordReset(username, email, newPassword) {
+    // 1. Update the local users list with the new password
+    const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
+    const uIdx = users.findIndex(u => u.email && u.email.toLowerCase() === email.toLowerCase());
+    if (uIdx > -1) {
+      users[uIdx].password = newPassword;
+    } else {
+      users.push({ username, email, password: newPassword });
+    }
+    localStorage.setItem('dailyprep_users', JSON.stringify(users));
+    
+    // 2. Set active session details
+    activeUser = { username, email, password: newPassword };
+    localStorage.setItem('dailyprep_active_user', JSON.stringify(activeUser));
+    
+    // 3. Auto-load the dashboard
+    loadUserDashboard();
+    
+    // Show success alert & toast
+    showToast("Password Updated", "Your password has been changed successfully.", "success");
+    
+    // Dispatch confirmation email
     setTimeout(() => {
       sendEmailNotification(
         email,
-        "DailyPrep - SDE Account Recovery",
-        `Hi ${username},\n\nYou have successfully requested password recovery for your SDE preparation account.\n\nHere are your login credentials:\n- Username: ${username}\n- Password: ${password}\n\nAccess dashboard: https://daily-prep-future.vercel.app/\n\nKeep pushing forward!\nDailyPrep Team`
+        "DailyPrep - Password Reset Confirmation",
+        `Hi ${username},\n\nYour password has been successfully updated.\n\nYou can now log in using your new credentials:\n- Username: ${username}\n- Email: ${email}\n- Password: ${newPassword}\n\nAccess dashboard: https://daily-prep-future.vercel.app/\n\nKeep pushing forward!\nDailyPrep Team`
       );
     }, 1000);
   }

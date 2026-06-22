@@ -617,6 +617,30 @@
         <input type="text" id="settings-username-input" style="width: 100%; padding: 10px 14px; border-radius: var(--border-radius-sm); border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); color: #fff; font-size: 0.9rem;" placeholder="Change username">
       </div>
 
+      <!-- Email Notification Config -->
+      <div>
+        <label for="settings-email-mode" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Email Notification Mode</label>
+        <select id="settings-email-mode" style="width: 100%; padding: 10px 14px; border-radius: var(--border-radius-sm); border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); color: #fff; font-size: 0.9rem; margin-bottom: 0.75rem; cursor: pointer; outline: none;">
+          <option value="simulated">Simulated Only (Toasts)</option>
+          <option value="formsubmit">Real Email - FormSubmit (Zero Config)</option>
+          <option value="emailjs">Real Email - EmailJS (Custom Keys)</option>
+        </select>
+        
+        <!-- Info boxes -->
+        <div id="info-formsubmit" style="font-size: 0.75rem; color: var(--text-secondary); background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); padding: 10px 12px; border-radius: var(--border-radius-sm); line-height: 1.4; display: none; margin-bottom: 0.5rem;">
+          ℹ️ <strong>First-Time Setup:</strong> When the first email is sent, FormSubmit sends an activation email. You <strong>MUST</strong> click the link in that email to start receiving future notifications.
+        </div>
+        
+        <div id="info-emailjs" style="display: none; flex-direction: column; gap: 8px;">
+          <div style="font-size: 0.72rem; color: var(--text-secondary); background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.15); padding: 10px 12px; border-radius: var(--border-radius-sm); line-height: 1.4; margin-bottom: 0.25rem;">
+            ℹ️ Setup custom email templates on EmailJS. Your template must contain <code>{{to_email}}</code>, <code>{{subject}}</code>, and <code>{{message}}</code>.
+          </div>
+          <input type="text" id="settings-emailjs-publickey" style="width: 100%; padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); color: #fff; font-size: 0.85rem;" placeholder="EmailJS Public Key (e.g. user_...)">
+          <input type="text" id="settings-emailjs-serviceid" style="width: 100%; padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); color: #fff; font-size: 0.85rem;" placeholder="EmailJS Service ID (e.g. service_...)">
+          <input type="text" id="settings-emailjs-templateid" style="width: 100%; padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); color: #fff; font-size: 0.85rem;" placeholder="EmailJS Template ID (e.g. template_...)">
+        </div>
+      </div>
+
       <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
         <button id="settings-save-btn" class="btn-primary" style="padding: 10px 20px; font-weight: 700; cursor: pointer; border-radius: var(--border-radius-sm);">Save Settings</button>
       </div>

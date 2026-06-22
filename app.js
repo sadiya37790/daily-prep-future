@@ -19,6 +19,7 @@ function showToast(title, desc, type = 'success') {
   let icon = '🔔';
   if (type === 'success') icon = '✓';
   if (type === 'warning') icon = '⚠️';
+  if (type === 'info') icon = 'ℹ️';
   if (title.toLowerCase().includes('email')) icon = '✉️';
 
   toast.innerHTML = `
@@ -47,6 +48,87 @@ function showToast(title, desc, type = 'success') {
   container.appendChild(toast);
 }
 
+// --- EMAIL NOTIFICATION DISPATCHER ---
+function sendEmailNotification(toEmail, subject, body) {
+  const mode = userProgress ? (userProgress.emailMode || 'formsubmit') : 'formsubmit';
+  
+  if (mode === 'simulated') {
+    console.log(`[Simulated Email Alert] Sent to ${toEmail}. Subject: ${subject}. Body: ${body}`);
+    showToast(
+      "Simulated Email Sent",
+      `Welcome/reminder dispatched to ${toEmail}.`,
+      "success"
+    );
+    return;
+  }
+
+  if (mode === 'formsubmit') {
+    // Show toast that it's dispatching
+    showToast("Email Dispatching", `Sending real email via FormSubmit to ${toEmail}...`, "info");
+    
+    fetch(`https://formsubmit.co/ajax/${toEmail}`, {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        _subject: subject,
+        message: body,
+        _template: "box"
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log("[FormSubmit Success]", data);
+      showToast("Email Dispatched", `Notification successfully sent to ${toEmail}!`, "success");
+    })
+    .catch(err => {
+      console.error("[FormSubmit Error]", err);
+      showToast("Email Failed", `Failed to send email to ${toEmail}. Check console.`, "warning");
+    });
+    return;
+  }
+
+  if (mode === 'emailjs') {
+    const config = userProgress ? userProgress.emailjsConfig : null;
+    if (!config || !config.publicKey || !config.serviceId || !config.templateId) {
+      showToast("Email Config Error", "Please configure EmailJS credentials in settings.", "warning");
+      return;
+    }
+
+    showToast("Email Dispatching", `Sending real email via EmailJS to ${toEmail}...`, "info");
+
+    const triggerEmailJSSend = () => {
+      window.emailjs.init({ publicKey: config.publicKey });
+      window.emailjs.send(config.serviceId, config.templateId, {
+        to_email: toEmail,
+        subject: subject,
+        message: body
+      })
+      .then(response => {
+        console.log("[EmailJS Success]", response);
+        showToast("Email Dispatched", `Notification successfully sent to ${toEmail}!`, "success");
+      })
+      .catch(error => {
+        console.error("[EmailJS Error]", error);
+        showToast("Email Failed", `EmailJS failed. Check credentials/console.`, "warning");
+      });
+    };
+
+    // Dynamically load EmailJS script if not already present
+    if (!window.emailjs) {
+      const script = document.createElement('script');
+      script.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
+      script.onload = triggerEmailJSSend;
+      script.onerror = () => showToast("SDK Load Failed", "Could not load EmailJS SDK script.", "warning");
+      document.head.appendChild(script);
+    } else {
+      triggerEmailJSSend();
+    }
+  }
+}
+
 // Default progress object for a new user
 const createDefaultProgress = () => ({
   streak: 0,
@@ -68,7 +150,13 @@ const createDefaultProgress = () => ({
   bookmarkedAptitude: [], // format: [{ topic: 'number-systems', topicTitle: 'Number Systems', question: qObj }]
   xp: 0,
   level: 1,
-  theme: 'dark'
+  theme: 'dark',
+  emailMode: 'formsubmit',
+  emailjsConfig: {
+    publicKey: '',
+    serviceId: '',
+    templateId: ''
+  }
 });
 
 // --- DOM ELEMENTS ---
@@ -285,7 +373,11 @@ function checkInactiveUsersAndNotify() {
           remindedCount++;
           remindedList.push(`${u.username} (${u.email})`);
           
-          console.log(`[Email Alert] Daily Prep reminder sent to ${u.email}`);
+          sendEmailNotification(
+            u.email,
+            "DailyPrep Action Required: Protect Your Streak!",
+            `Hi ${u.username},\n\nYou haven't completed today's SDE prep tasks! Log in now to solve your DSA, Quantitative Aptitude, Paragraph Writing, and CS Core modules and maintain your consistency streak.\n\nStudy dashboard: https://daily-prep-future.vercel.app/\n\nHappy Coding!\nDailyPrep Team`
+          );
         }
       }
     }
@@ -294,7 +386,7 @@ function checkInactiveUsersAndNotify() {
   if (remindedCount > 0) {
     setTimeout(() => {
       showToast(
-        "Simulated Email Alerts",
+        "Email Notifications Sent",
         `Sent daily reminder notification to ${remindedCount} inactive user(s): ${remindedList.join(', ')}.`,
         "warning"
       );
@@ -477,12 +569,12 @@ function setupAuthEventListeners() {
 
     loadUserDashboard();
 
-    // Trigger simulated welcome email notification toast
+    // Trigger welcome email notification
     setTimeout(() => {
-      showToast(
-        "Simulated Email Sent",
-        `Welcome email dispatched to ${email}. Thank you for registering at DailyPrep!`,
-        "success"
+      sendEmailNotification(
+        email,
+        "Welcome to DailyPrep!",
+        `Hi ${username},\n\nThank you for registering at DailyPrep! Your SDE prep journey starts today. Complete your DSA, Quantitative Aptitude, English Paragraph Writing, and CS Core challenges daily to build consistency.\n\nKeep leveling up!\n\nBest,\nDailyPrep Team`
       );
     }, 1500);
   });
@@ -671,10 +763,10 @@ function setupAuthEventListeners() {
 
         if (isFirstLogin) {
           setTimeout(() => {
-            showToast(
-              "Simulated Email Sent",
-              `Welcome email dispatched to ${activeUser.email}. Thank you for registering at DailyPrep!`,
-              "success"
+            sendEmailNotification(
+              activeUser.email,
+              "Welcome to DailyPrep!",
+              `Hi ${activeUser.username},\n\nThank you for registering at DailyPrep! Your SDE prep journey starts today. Complete your DSA, Quantitative Aptitude, English Paragraph Writing, and CS Core challenges daily to build consistency.\n\nKeep leveling up!\n\nBest,\nDailyPrep Team`
             );
           }, 1500);
         }
@@ -779,14 +871,14 @@ function updateOverallProgress() {
         </div>
       `;
 
-      // Trigger simulated email notification once per login session
+      // Trigger email notification once per login session
       if (activeUser && !emailReminderSentToday) {
         emailReminderSentToday = true;
         setTimeout(() => {
-          showToast(
-            "Simulated Email Sent",
-            `Sent reminder notification to ${activeUser.email} to complete today's ${remaining} pending module(s).`,
-            "warning"
+          sendEmailNotification(
+            activeUser.email,
+            "DailyPrep: Remaining Tasks for Today",
+            `Hi ${activeUser.username},\n\nThis is a quick reminder that you have ${remaining} pending SDE prep module(s) today. Complete them before midnight to protect your consistency streak!\n\nAccess dashboard: https://daily-prep-future.vercel.app/\n\nKeep pushing,\nDailyPrep Team`
           );
         }, 1200);
       }
@@ -2395,9 +2487,30 @@ function setupSettingsModal() {
   const themeBtnDark = document.getElementById('theme-btn-dark');
   const themeBtnLight = document.getElementById('theme-btn-light');
 
+  // Email Config elements
+  const emailModeSelect = document.getElementById('settings-email-mode');
+  const infoFormSubmit = document.getElementById('info-formsubmit');
+  const infoEmailJS = document.getElementById('info-emailjs');
+  const emailJSPublicKey = document.getElementById('settings-emailjs-publickey');
+  const emailJSServiceId = document.getElementById('settings-emailjs-serviceid');
+  const emailJSTemplateId = document.getElementById('settings-emailjs-templateid');
+
   if (!toggleBtn || !modal || !closeBtn || !saveBtn || !usernameInput) return;
 
   let chosenTheme = userProgress.theme || 'dark';
+
+  const toggleEmailConfigUI = (mode) => {
+    if (mode === 'formsubmit') {
+      infoFormSubmit.style.display = 'block';
+      infoEmailJS.style.display = 'none';
+    } else if (mode === 'emailjs') {
+      infoFormSubmit.style.display = 'none';
+      infoEmailJS.style.display = 'flex';
+    } else {
+      infoFormSubmit.style.display = 'none';
+      infoEmailJS.style.display = 'none';
+    }
+  };
 
   // Toggle Modal open
   toggleBtn.onclick = () => {
@@ -2412,6 +2525,16 @@ function setupSettingsModal() {
       themeBtnDark.classList.add('active-theme');
       themeBtnLight.classList.remove('active-theme');
     }
+
+    // Populate email configuration values
+    const currentEmailMode = userProgress.emailMode || 'formsubmit';
+    emailModeSelect.value = currentEmailMode;
+    toggleEmailConfigUI(currentEmailMode);
+
+    const config = userProgress.emailjsConfig || { publicKey: '', serviceId: '', templateId: '' };
+    emailJSPublicKey.value = config.publicKey || '';
+    emailJSServiceId.value = config.serviceId || '';
+    emailJSTemplateId.value = config.templateId || '';
     
     modal.classList.remove('hidden');
   };
@@ -2434,6 +2557,11 @@ function setupSettingsModal() {
     themeBtnDark.classList.remove('active-theme');
   };
 
+  // Email mode change listener
+  emailModeSelect.onchange = () => {
+    toggleEmailConfigUI(emailModeSelect.value);
+  };
+
   // Save click
   saveBtn.onclick = () => {
     const newUsername = usernameInput.value.trim();
@@ -2451,6 +2579,14 @@ function setupSettingsModal() {
     } else {
       document.body.classList.remove('light-theme');
     }
+
+    // Save email configuration
+    userProgress.emailMode = emailModeSelect.value;
+    userProgress.emailjsConfig = {
+      publicKey: emailJSPublicKey.value.trim(),
+      serviceId: emailJSServiceId.value.trim(),
+      templateId: emailJSTemplateId.value.trim()
+    };
 
     // Save username details if changed
     if (newUsername !== oldUsername) {

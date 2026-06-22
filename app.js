@@ -2423,6 +2423,7 @@ function setupSettingsModal() {
   const modal = document.getElementById('modal-settings');
   const closeBtn = document.getElementById('settings-close-btn');
   const saveBtn = document.getElementById('settings-save-btn');
+  const deleteBtn = document.getElementById('settings-delete-btn');
   const usernameInput = document.getElementById('settings-username-input');
   
   const themeBtnDark = document.getElementById('theme-btn-dark');
@@ -2508,6 +2509,35 @@ function setupSettingsModal() {
     modal.classList.add('hidden');
     showToast("Settings Saved", "Workspace settings updated successfully!", "success");
   };
+
+  // Delete account click
+  if (deleteBtn) {
+    deleteBtn.onclick = () => {
+      const confirmDelete = confirm("⚠️ Are you absolutely sure you want to delete your account? This will permanently delete all your progress, streak, and credentials. This action cannot be undone.");
+      if (!confirmDelete) return;
+
+      const username = activeUser.username;
+      
+      // 1. Remove progress from localStorage
+      localStorage.removeItem(`dailyprep_progress_${username}`);
+      
+      // 2. Remove user details from registered users list
+      const users = JSON.parse(localStorage.getItem('dailyprep_users') || '[]');
+      const updatedUsers = users.filter(u => u.username.toLowerCase() !== username.toLowerCase());
+      localStorage.setItem('dailyprep_users', JSON.stringify(updatedUsers));
+      
+      // 3. Remove active user sessions
+      localStorage.removeItem('dailyprep_active_user');
+      activeUser = null;
+      userProgress = null;
+      
+      // 4. Close modal and redirect to auth screen
+      modal.classList.add('hidden');
+      showAuthScreen();
+      
+      showToast("Account Deleted", "Your account and all progress have been permanently deleted.", "warning");
+    };
+  }
 }
 
 function updateCalendarAndStreakUI() {

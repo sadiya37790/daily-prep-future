@@ -125,6 +125,9 @@ function syncUserStatsToDatabase() {
 }
 
 function loadLeaderboardData() {
+  // Sync the current user's latest stats to the database before retrieving rankings
+  syncUserStatsToDatabase();
+
   const statusEl = document.getElementById('leaderboard-sync-status');
   const listEl = document.getElementById('leaderboard-list');
   if (!listEl) return;
@@ -419,6 +422,9 @@ function loadUserDashboard() {
 
   // Pre-warm the LeetCode verification API server to bypass cold starts
   warmupVerificationServer();
+
+  // Sync SDE stats to the central database immediately on dashboard load
+  syncUserStatsToDatabase();
 }
 
 // Check if a new calendar day has started, reset daily metrics but save streaks

@@ -216,6 +216,9 @@ function loadUserDashboard() {
   
   // Check inactive registered users and notify them by simulated email
   checkInactiveUsersAndNotify();
+
+  // Pre-warm the LeetCode verification API server to bypass cold starts
+  warmupVerificationServer();
 }
 
 // Check if a new calendar day has started, reset daily metrics but save streaks
@@ -317,6 +320,14 @@ function getYesterdayDateString() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Background wakeup ping to prevent cold starts when verifying LeetCode solutions
+function warmupVerificationServer() {
+  console.log("[Warmup] Sending background ping to wake up Render verification API...");
+  fetch('https://alfa-leetcode-api.onrender.com/').catch(() => {
+    // Ignore errors since this is just a background wakeup request
+  });
 }
 
 function saveProgressToStorage() {

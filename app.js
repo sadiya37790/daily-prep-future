@@ -50,83 +50,30 @@ function showToast(title, desc, type = 'success') {
 
 // --- EMAIL NOTIFICATION DISPATCHER ---
 function sendEmailNotification(toEmail, subject, body) {
-  const mode = userProgress ? (userProgress.emailMode || 'formsubmit') : 'formsubmit';
+  // Show toast that it's dispatching
+  showToast("Email Dispatching", `Sending real email to ${toEmail}...`, "info");
   
-  if (mode === 'simulated') {
-    console.log(`[Simulated Email Alert] Sent to ${toEmail}. Subject: ${subject}. Body: ${body}`);
-    showToast(
-      "Simulated Email Sent",
-      `Welcome/reminder dispatched to ${toEmail}.`,
-      "success"
-    );
-    return;
-  }
-
-  if (mode === 'formsubmit') {
-    // Show toast that it's dispatching
-    showToast("Email Dispatching", `Sending real email via FormSubmit to ${toEmail}...`, "info");
-    
-    fetch(`https://formsubmit.co/ajax/${toEmail}`, {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        _subject: subject,
-        message: body,
-        _template: "box"
-      })
+  fetch(`https://formsubmit.co/ajax/${toEmail}`, {
+    method: "POST",
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      _subject: subject,
+      message: body,
+      _template: "box"
     })
-    .then(res => res.json())
-    .then(data => {
-      console.log("[FormSubmit Success]", data);
-      showToast("Email Dispatched", `Notification successfully sent to ${toEmail}!`, "success");
-    })
-    .catch(err => {
-      console.error("[FormSubmit Error]", err);
-      showToast("Email Failed", `Failed to send email to ${toEmail}. Check console.`, "warning");
-    });
-    return;
-  }
-
-  if (mode === 'emailjs') {
-    const config = userProgress ? userProgress.emailjsConfig : null;
-    if (!config || !config.publicKey || !config.serviceId || !config.templateId) {
-      showToast("Email Config Error", "Please configure EmailJS credentials in settings.", "warning");
-      return;
-    }
-
-    showToast("Email Dispatching", `Sending real email via EmailJS to ${toEmail}...`, "info");
-
-    const triggerEmailJSSend = () => {
-      window.emailjs.init({ publicKey: config.publicKey });
-      window.emailjs.send(config.serviceId, config.templateId, {
-        to_email: toEmail,
-        subject: subject,
-        message: body
-      })
-      .then(response => {
-        console.log("[EmailJS Success]", response);
-        showToast("Email Dispatched", `Notification successfully sent to ${toEmail}!`, "success");
-      })
-      .catch(error => {
-        console.error("[EmailJS Error]", error);
-        showToast("Email Failed", `EmailJS failed. Check credentials/console.`, "warning");
-      });
-    };
-
-    // Dynamically load EmailJS script if not already present
-    if (!window.emailjs) {
-      const script = document.createElement('script');
-      script.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
-      script.onload = triggerEmailJSSend;
-      script.onerror = () => showToast("SDK Load Failed", "Could not load EmailJS SDK script.", "warning");
-      document.head.appendChild(script);
-    } else {
-      triggerEmailJSSend();
-    }
-  }
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("[FormSubmit Success]", data);
+    showToast("Email Dispatched", `Notification successfully sent to ${toEmail}!`, "success");
+  })
+  .catch(err => {
+    console.error("[FormSubmit Error]", err);
+    showToast("Email Failed", `Failed to send email to ${toEmail}. Check console.`, "warning");
+  });
 }
 
 // Default progress object for a new user
@@ -150,13 +97,7 @@ const createDefaultProgress = () => ({
   bookmarkedAptitude: [], // format: [{ topic: 'number-systems', topicTitle: 'Number Systems', question: qObj }]
   xp: 0,
   level: 1,
-  theme: 'dark',
-  emailMode: 'formsubmit',
-  emailjsConfig: {
-    publicKey: '',
-    serviceId: '',
-    templateId: ''
-  }
+  theme: 'dark'
 });
 
 // --- DOM ELEMENTS ---
@@ -2487,30 +2428,9 @@ function setupSettingsModal() {
   const themeBtnDark = document.getElementById('theme-btn-dark');
   const themeBtnLight = document.getElementById('theme-btn-light');
 
-  // Email Config elements
-  const emailModeSelect = document.getElementById('settings-email-mode');
-  const infoFormSubmit = document.getElementById('info-formsubmit');
-  const infoEmailJS = document.getElementById('info-emailjs');
-  const emailJSPublicKey = document.getElementById('settings-emailjs-publickey');
-  const emailJSServiceId = document.getElementById('settings-emailjs-serviceid');
-  const emailJSTemplateId = document.getElementById('settings-emailjs-templateid');
-
   if (!toggleBtn || !modal || !closeBtn || !saveBtn || !usernameInput) return;
 
   let chosenTheme = userProgress.theme || 'dark';
-
-  const toggleEmailConfigUI = (mode) => {
-    if (mode === 'formsubmit') {
-      infoFormSubmit.style.display = 'block';
-      infoEmailJS.style.display = 'none';
-    } else if (mode === 'emailjs') {
-      infoFormSubmit.style.display = 'none';
-      infoEmailJS.style.display = 'flex';
-    } else {
-      infoFormSubmit.style.display = 'none';
-      infoEmailJS.style.display = 'none';
-    }
-  };
 
   // Toggle Modal open
   toggleBtn.onclick = () => {
@@ -2525,16 +2445,6 @@ function setupSettingsModal() {
       themeBtnDark.classList.add('active-theme');
       themeBtnLight.classList.remove('active-theme');
     }
-
-    // Populate email configuration values
-    const currentEmailMode = userProgress.emailMode || 'formsubmit';
-    emailModeSelect.value = currentEmailMode;
-    toggleEmailConfigUI(currentEmailMode);
-
-    const config = userProgress.emailjsConfig || { publicKey: '', serviceId: '', templateId: '' };
-    emailJSPublicKey.value = config.publicKey || '';
-    emailJSServiceId.value = config.serviceId || '';
-    emailJSTemplateId.value = config.templateId || '';
     
     modal.classList.remove('hidden');
   };
@@ -2557,11 +2467,6 @@ function setupSettingsModal() {
     themeBtnDark.classList.remove('active-theme');
   };
 
-  // Email mode change listener
-  emailModeSelect.onchange = () => {
-    toggleEmailConfigUI(emailModeSelect.value);
-  };
-
   // Save click
   saveBtn.onclick = () => {
     const newUsername = usernameInput.value.trim();
@@ -2579,14 +2484,6 @@ function setupSettingsModal() {
     } else {
       document.body.classList.remove('light-theme');
     }
-
-    // Save email configuration
-    userProgress.emailMode = emailModeSelect.value;
-    userProgress.emailjsConfig = {
-      publicKey: emailJSPublicKey.value.trim(),
-      serviceId: emailJSServiceId.value.trim(),
-      templateId: emailJSTemplateId.value.trim()
-    };
 
     // Save username details if changed
     if (newUsername !== oldUsername) {

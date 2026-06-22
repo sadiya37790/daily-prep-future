@@ -697,13 +697,13 @@ function setupAuthEventListeners() {
     showForgotSuccess(user.username, email, user.password);
   }
 
-  function showForgotSuccess(username, email, password) {
+   function showForgotSuccess(username, email, password) {
     forgotSuccess.innerHTML = `
       <div style="font-weight: 700; margin-bottom: 6px; color: #10b981; display: flex; align-items: center; gap: 6px;">
         <span style="font-size: 1.1rem;">✉️</span> Password Recovered Successfully!
       </div>
       <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">
-        A simulated email has been dispatched to <strong>${email}</strong>.
+        An email notification has been dispatched to <strong>${email}</strong>.
       </div>
       <div style="background: rgba(0, 0, 0, 0.4); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: left;">
         <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px;">Retrieved Details</div>
@@ -713,6 +713,15 @@ function setupAuthEventListeners() {
     `;
     forgotSuccess.classList.remove('hidden');
     showToast("Password Recovered", `Retrieved details for ${username}.`, "success");
+
+    // Send a real email notification using the user's active email configuration
+    setTimeout(() => {
+      sendEmailNotification(
+        email,
+        "DailyPrep - SDE Account Recovery",
+        `Hi ${username},\n\nYou have successfully requested password recovery for your SDE preparation account.\n\nHere are your login credentials:\n- Username: ${username}\n- Password: ${password}\n\nAccess dashboard: https://daily-prep-future.vercel.app/\n\nKeep pushing forward!\nDailyPrep Team`
+      );
+    }, 1000);
   }
 
   // Login Form Submit

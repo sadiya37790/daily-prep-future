@@ -901,6 +901,16 @@ function setupAuthEventListeners() {
         progress.xp = result.xp;
         progress.level = result.level;
         progress.streak = result.streak;
+        if (result.lastUpdated) {
+          try {
+            const lastDate = new Date(result.lastUpdated);
+            if (!isNaN(lastDate.getTime())) {
+              progress.lastActiveDate = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}-${String(lastDate.getDate()).padStart(2, '0')}`;
+            }
+          } catch (e) {
+            console.error("Error parsing lastUpdated timestamp:", e);
+          }
+        }
         localStorage.setItem(progressKey, JSON.stringify(progress));
 
         activeUser = { username: result.username, email: result.email, password: password };

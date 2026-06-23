@@ -111,7 +111,8 @@ function doPost(e) {
               email: rowEmail,
               xp: parseInt(rows[i][3]) || 0,
               level: parseInt(rows[i][4]) || 1,
-              streak: parseInt(rows[i][5]) || 0
+              streak: parseInt(rows[i][5]) || 0,
+              lastUpdated: rows[i][7] ? rows[i][7].toString() : ""
             };
           } else {
             response = { status: "error", message: "Invalid email, username, or password." };

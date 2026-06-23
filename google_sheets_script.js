@@ -135,7 +135,7 @@ function doPost(e) {
         var rowEmail = rows[i][1] ? rows[i][1].toString() : "";
         var rowPassword = rows[i][2] ? rows[i][2].toString() : "";
         
-        if (rowEmail.trim().toLowerCase() === email.toLowerCase()) {
+        if (rowEmail.trim().toLowerCase() === email.toLowerCase() || rowUsername.trim().toLowerCase() === email.toLowerCase()) {
           found = true;
           response = {
             status: "success",

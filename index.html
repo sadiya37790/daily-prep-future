@@ -6,6 +6,27 @@
   <title>Daily Prep for Future - Interview & Placement Tracker</title>
   <meta name="description" content="A comprehensive daily tracking and accountability dashboard for DSA, Quantitative Aptitude, English Writing, and CS Theory.">
   <link rel="stylesheet" href="styles.css">
+  <script>
+    // Global Error Handler to catch any JavaScript execution/loading errors and present feedback
+    window.onerror = function(message, source, lineno, colno, error) {
+      console.error("Global Error Caught:", message, "at", source, ":", lineno);
+      const container = document.getElementById('toast-container');
+      if (container) {
+        const toast = document.createElement('div');
+        toast.className = 'toast-card error';
+        toast.style.cssText = "background: rgba(239, 68, 68, 0.95); border: 1px solid rgba(239, 68, 68, 0.4); box-shadow: 0 4px 12px rgba(0,0,0,0.5);";
+        toast.innerHTML = `
+          <span class="toast-icon">⚠️</span>
+          <div class="toast-content">
+            <div class="toast-title" style="color:#fff; font-weight:700; font-size:0.9rem;">App Loading Error</div>
+            <div class="toast-desc" style="color:#ffe4e6; font-size:0.75rem;">Failed to initialize daily prep dashboard. Please clear your browser cache and refresh.</div>
+          </div>
+        `;
+        container.appendChild(toast);
+      }
+      return false;
+    };
+  </script>
 </head>
 <body>
 
@@ -79,7 +100,7 @@
       <form id="form-forgot" class="auth-form hidden">
         <div style="text-align: center; margin-bottom: 1.5rem;">
           <h3 style="font-size: 1.2rem; color: var(--text-main); font-weight: 700; margin-bottom: 4px;">Reset Password</h3>
-          <p id="forgot-instructions" style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">Enter your email to verify your SDE account.</p>
+          <p id="forgot-instructions" style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">Enter your registered email address to verify your account.</p>
         </div>
 
         <!-- Step 1: Email Verification -->
@@ -260,6 +281,19 @@
               
               <!-- Year Footer -->
               <div id="cal-year" style="background: rgba(255,255,255,0.03); color: var(--text-secondary); font-size: 0.55rem; text-align: center; padding: 3px 0; font-weight: 700; border-top: 1px solid rgba(255,255,255,0.04);">2026</div>
+              <script>
+                (function() {
+                  try {
+                    var d = new Date();
+                    var months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+                    document.getElementById('cal-month').textContent = months[d.getMonth()];
+                    document.getElementById('cal-day').textContent = d.getDate();
+                    document.getElementById('cal-year').textContent = d.getFullYear();
+                  } catch (e) {
+                    console.error("Inline calendar init error:", e);
+                  }
+                })();
+              </script>
             </div>
             
             <!-- Streak Flame Gauge -->
@@ -332,7 +366,8 @@
           <div class="dsa-username-setup" style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem; align-items: flex-end;">
             <div class="input-group" style="flex: 1; min-width: 240px;">
               <label for="leetcode-username">LeetCode Username</label>
-              <input type="text" id="leetcode-username" placeholder="Enter username (e.g. expert_coder, lazy_coder)">
+              <input type="text" id="leetcode-username" placeholder="e.g. sadiya_123">
+              <span style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px; display: block; opacity: 0.85;">⚠️ Username is case sensitive and must match your LeetCode profile exactly.</span>
             </div>
             <button id="save-leetcode-username" class="btn-secondary" style="height: 44px; margin-bottom: 0;">Save Username</button>
           </div>
@@ -703,10 +738,35 @@
   </div>
 
   <!-- Script entries in order of dependency -->
-  <script src="modules/dsa.js?v=3.0.0"></script>
-  <script src="modules/aptitude.js?v=3.0.0"></script>
-  <script src="modules/writing.js?v=3.0.0"></script>
-  <script src="modules/theory.js?v=3.0.0"></script>
-  <script src="app.js?v=3.0.0"></script>
+  <script src="modules/dsa.js?v=3.5.2"></script>
+  <script src="modules/aptitude.js?v=3.5.2"></script>
+  <script src="modules/writing.js?v=3.5.2"></script>
+  <script src="modules/theory.js?v=3.5.2"></script>
+  <script src="app.js?v=3.5.2"></script>
+  <script>
+    // Fallback timer for loading indicators (Issue #6: No error messages shown to users on load failure)
+    setTimeout(() => {
+      const placeholders = [
+        { id: 'writing-prompt-text', initial: 'Loading prompt...', error: 'Failed to load prompt. Please check your connection and refresh.' },
+        { id: 'theory-question', initial: 'Loading Concept...', error: 'Failed to load concept flashcard. Please check your connection and refresh.' },
+        { id: 'theory-quiz-question', initial: '⚡ Mini Quiz: Loading question...', error: 'Failed to load quiz question. Please check your connection and refresh.' },
+        { id: 'sql-description', initial: 'Loading schema description...', error: 'Failed to load SQL description. Please check your connection and refresh.' },
+        { id: 'sql-input', initial: 'Loading...', error: 'Failed to load SQL sample input. Please check your connection and refresh.' },
+        { id: 'sql-output', initial: 'Loading...', error: 'Failed to load SQL expected output. Please check your connection and refresh.' }
+      ];
+      
+      placeholders.forEach(item => {
+        const el = document.getElementById(item.id);
+        if (el && el.textContent.trim() === item.initial) {
+          el.innerHTML = `<span style="color: #ef4444; font-weight: 500;">⚠️ ${item.error}</span>`;
+        }
+      });
+      
+      const sidebarMeta = document.getElementById('sidebar-leaderboard-meta');
+      if (sidebarMeta && sidebarMeta.textContent.trim() === 'Loading rankings...') {
+        sidebarMeta.innerHTML = `<span style="color: #f59e0b; font-size: 0.7rem;">⚠️ Load timed out. Offline mode active.</span>`;
+      }
+    }, 5000);
+  </script>
 </body>
 </html>

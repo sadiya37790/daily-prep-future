@@ -3,6 +3,19 @@
 // If empty, the application will fallback to Local Mode (offline database stored in browser localStorage).
 const LEADERBOARD_DB_URL = "https://script.google.com/macros/s/AKfycbz8uQlLUghtZPMM77DrdYp0-LyYeX1GekT_2BcM6SCS36lGaiKVw4gjypCRtH9LvyM5qA/exec";
 
+// Helper for fetching with a timeout to prevent infinite hangs (e.g. adblocker blocking script.google.com)
+function fetchWithTimeout(url, options = {}) {
+  const { timeout = 5000 } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  return fetch(url, {
+    ...options,
+    signal: controller.signal
+  }).finally(() => {
+    clearTimeout(id);
+  });
+}
+
 const { dsaDatabase, verifyLeetCodeSubmission } = window;
 const { aptitudeDatabase } = window;
 const { dailyPrompts, analyzeParagraph } = window;
@@ -115,12 +128,13 @@ function syncUserStatsToDatabase() {
     return;
   }
 
-  fetch(LEADERBOARD_DB_URL, {
+  fetchWithTimeout(LEADERBOARD_DB_URL, {
     method: "POST",
     headers: {
       'Content-Type': 'text/plain;charset=utf-8'
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    timeout: 5000
   })
   .then(() => {
     console.log("[Sync] Global Database Sync Successful for:", activeUser.username);
@@ -199,7 +213,7 @@ function loadLeaderboardData() {
       statusEl.style.color = "var(--success)";
     }
 
-    fetch(LEADERBOARD_DB_URL)
+    fetchWithTimeout(LEADERBOARD_DB_URL, { timeout: 5000 })
     .then(res => res.json())
     .then(users => {
       renderLeaderboardRows(users);
@@ -298,7 +312,7 @@ function loadSidebarLeaderboardRank() {
   };
 
   if (LEADERBOARD_DB_URL) {
-    fetch(LEADERBOARD_DB_URL)
+    fetchWithTimeout(LEADERBOARD_DB_URL, { timeout: 5000 })
     .then(res => res.json())
     .then(users => {
       handleRankLoad(users);
@@ -690,10 +704,11 @@ function setupAuthEventListeners() {
     btnVerifyEmail.textContent = "Verifying...";
     
     if (LEADERBOARD_DB_URL) {
-      fetch(LEADERBOARD_DB_URL, {
+      fetchWithTimeout(LEADERBOARD_DB_URL, {
         method: "POST",
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "forgot", email })
+        body: JSON.stringify({ action: "forgot", email }),
+        timeout: 5000
       })
       .then(res => res.json())
       .then(result => {
@@ -765,10 +780,11 @@ function setupAuthEventListeners() {
     btnUpdatePassword.textContent = "Updating...";
     
     if (LEADERBOARD_DB_URL) {
-      fetch(LEADERBOARD_DB_URL, {
+      fetchWithTimeout(LEADERBOARD_DB_URL, {
         method: "POST",
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "reset_password", email: verifiedResetEmail, password: newPassword })
+        body: JSON.stringify({ action: "reset_password", email: verifiedResetEmail, password: newPassword }),
+        timeout: 5000
       })
       .then(res => res.json())
       .then(result => {
@@ -847,10 +863,11 @@ function setupAuthEventListeners() {
         loginBtn.textContent = "Logging In...";
       }
 
-      fetch(LEADERBOARD_DB_URL, {
+      fetchWithTimeout(LEADERBOARD_DB_URL, {
         method: "POST",
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "login", identifier, password })
+        body: JSON.stringify({ action: "login", identifier, password }),
+        timeout: 5000
       })
       .then(res => res.json())
       .then(result => {
@@ -945,10 +962,11 @@ function setupAuthEventListeners() {
         signupBtn.textContent = "Creating Account...";
       }
 
-      fetch(LEADERBOARD_DB_URL, {
+      fetchWithTimeout(LEADERBOARD_DB_URL, {
         method: "POST",
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: "signup", username, email, password })
+        body: JSON.stringify({ action: "signup", username, email, password }),
+        timeout: 5000
       })
       .then(res => res.json())
       .then(result => {

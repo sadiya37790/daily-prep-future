@@ -2,7 +2,7 @@
 // Vercel serverless function proxying requests to the Google Sheets Apps Script URL.
 // This resolves CORS issues and prevents browser extensions from blocking database calls.
 
-const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbz8uQlLUghtZPMM77DrdYp0-LyYeX1GekT_2BcM6SCS36lGaiKVw4gjypCRtH9LvyM5qA/exec";
+const GOOGLE_SHEETS_URL = process.env.GOOGLE_SHEETS_URL || "https://script.google.com/macros/s/AKfycbz8uQlLUghtZPMM77DrdYp0-LyYeX1GekT_2BcM6SCS36lGaiKVw4gjypCRtH9LvyM5qA/exec";
 
 module.exports = async (req, res) => {
   // CORS configuration headers to support local testing under file:// protocol

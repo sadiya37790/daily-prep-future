@@ -231,3 +231,89 @@ function doPost(e) {
   return ContentService.createTextOutput(JSON.stringify(response))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+// =========================================================================================
+// BACKGROUND CRON JOB: DAILY INACTIVITY REMINDER & STREAK RESET (Option B)
+// =========================================================================================
+// Instructions to automate:
+// 1. In your Google Apps Script editor, click the clock icon on the left menu (Triggers).
+// 2. Click "+ Add Trigger" in the bottom-right corner.
+// 3. Configure:
+//    - Choose which function to run: sendDailyInactivityEmails
+//    - Choose which deployment should run: Head
+//    - Select event source: Time-driven
+//    - Select type of time-based trigger: Day timer
+//    - Select time of day: 12 AM to 1 AM (or select a time that fits your timezone)
+// 4. Click Save. Google will now run this function automatically once a day in the background.
+// =========================================================================================
+function sendDailyInactivityEmails() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = sheet.getDataRange().getValues();
+  var today = new Date();
+  
+  // Compute yesterday's date boundaries (casing out time of day)
+  var yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+  
+  var emailCount = 0;
+  
+  for (var i = 1; i < data.length; i++) {
+    var username = data[i][0] ? data[i][0].toString() : "";
+    var email = data[i][1] ? data[i][1].toString() : "";
+    var streak = parseInt(data[i][5]) || 0;
+    var completedTodayCount = parseInt(data[i][6]) || 0;
+    var lastUpdatedRaw = data[i][7];
+    
+    if (!username || !email) continue;
+    
+    // If they already have a 0 streak, do not send another reset alert
+    if (streak === 0) continue;
+    
+    var lastUpdated = lastUpdatedRaw ? new Date(lastUpdatedRaw) : null;
+    var missedYesterday = false;
+    
+    if (!lastUpdated) {
+      // No updates ever recorded, but streak is somehow > 0: count as missed
+      missedYesterday = true;
+    } else {
+      var lastUpdatedDateOnly = new Date(lastUpdated);
+      lastUpdatedDateOnly.setHours(0, 0, 0, 0);
+      
+      if (lastUpdatedDateOnly.getTime() < yesterday.getTime()) {
+        // Last update was before yesterday, so they definitely missed yesterday
+        missedYesterday = true;
+      } else if (lastUpdatedDateOnly.getTime() === yesterday.getTime()) {
+        // Active yesterday, but did they complete at least 1 task?
+        if (completedTodayCount === 0) {
+          missedYesterday = true;
+        }
+      }
+    }
+    
+    if (missedYesterday) {
+      var rowIndex = i + 1;
+      // 1. Reset streak and completion stats in Google Sheet
+      sheet.getRange(rowIndex, 6).setValue(0); // Streak = 0
+      sheet.getRange(rowIndex, 7).setValue(0); // CompletedTodayCount = 0
+      sheet.getRange(rowIndex, 8).setValue(new Date()); // Update timestamp to today to prevent duplicate alerts
+      
+      // 2. Send Option B Inactivity Reminder Email
+      var subject = "SDE Practice Reminder";
+      var body = "Hi " + username + ",\n\n" +
+                 "You did not practice yesterday on the DailyPrep dashboard. Complete your tasks today to maintain your consistency streak!\n\n" +
+                 "Log in here: https://daily-prep-future.vercel.app/\n\n" +
+                 "Happy Coding,\n" +
+                 "DailyPrep Team";
+      
+      try {
+        MailApp.sendEmail(email, subject, body);
+        emailCount++;
+        Logger.log("Daily inactivity email sent to: " + email);
+      } catch (e) {
+        Logger.log("Error sending email to " + email + ": " + e.toString());
+      }
+    }
+  }
+  Logger.log("Execution finished. Sent " + emailCount + " inactivity emails.");
+}

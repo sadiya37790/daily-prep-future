@@ -531,15 +531,6 @@ function checkDailyReset() {
     if (!completedYesterday && lastActive !== yesterdayStr) {
       // Streak broken
       userProgress.streak = 0;
-      
-      // Send missed task email notification exactly once when streak resets
-      if (activeUser && activeUser.email) {
-        sendEmailNotification(
-          activeUser.email,
-          "DailyPrep Streak Alert: You Missed Yesterday's Tasks!",
-          `Hi ${activeUser.username},\n\nYou missed yesterday's SDE prep challenges, so your consistency streak has been reset.\n\nDon't lose your momentum! Log in today to start a new streak and keep preparing.\n\nAccess dashboard: https://daily-prep-future.vercel.app/\n\nHappy Coding!\nDailyPrep Team`
-        );
-      }
     }
 
     // Reset daily tasks
